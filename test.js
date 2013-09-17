@@ -2,8 +2,17 @@
 
 'use strict';
 
+//-----------------------------------------------------------------------------
+// Dependencies
+//-----------------------------------------------------------------------------
+
 var chalk = require('chalk');
 var exec = require('child_process').exec;
+var fs = require('fs');
+
+//-----------------------------------------------------------------------------
+// Main execution point
+//-----------------------------------------------------------------------------
 
 console.log('');
 printHeader('Google Search First Sokoban Test');
@@ -20,12 +29,38 @@ removeDir('temp', function(err) {
 
       compile(function(err) {
         if(err) throw err;
+
+        readTestData('test.data', function(err, tests) {
+          
+        });
       });
     });
   });
 });
 
+//-----------------------------------------------------------------------------
+// Helper functions
+//-----------------------------------------------------------------------------
 
+function readTestData(file, cb) {
+  if(!cb) {
+    throw new Error('Callback required.');
+  }
+
+  printJob('Reading test data ' + file);
+  fs.readFile(file, 'utf8', function(err, data) {
+    if(err) {
+      printJobFailed();
+      return cb(err);
+    }
+
+    var result = data.split(/;LEVEL \d+/).splice(1);
+
+    printJobDone();
+
+    cb(null, result);
+  });
+}
 
 function printHeader(str, color) {
   var length = 50;
