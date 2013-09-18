@@ -33,75 +33,75 @@ removeDir('temp', function(err) {
         if(err) throw err;
 
         readTestData('test.data', function(err, tests) {
-	  function checkDone() {
-	    if(numExecuted >= numTests) {
-	      console.log('');
+          function checkDone() {
+            if(numExecuted >= numTests) {
+              console.log('');
 
-	      var elapsed = new Date() - bar.start;
+              var elapsed = new Date() - bar.start;
 
-	      printResult(numExecuted, numPassed, numFailed, elapsed);
+              printResult(numExecuted, numPassed, numFailed, elapsed);
 
-		// removeDir('temp', function(err) {
-		//   //Done.
-		// });
+                // removeDir('temp', function(err) {
+                //   //Done.
+                // });
+              
+              return true;
+            }
 
-	      return true;
-	    }
+            return false;
+          }
 
-	    return false;
-	  }
+          function runTest(data) {
+            numRunning++;
+            test(data, function(err, result) {
+              numRunning--;
 
-	  function runTest(data) {
-	    numRunning++;
-	    test(data, function(err, result) {
-	      numRunning--;
+              if(err) {
+                numFailed++;
+                numExecuted++;
+                bar.tick();
+                throw err;
+              }
 
-	      if(err) {
-		numFailed++;
-		numExecuted++;
-		bar.tick();
-		throw err;
-	      }
+              if(result) {
+                numPassed++;
+              } else {
+                numFailed++;
+              }
 
-	      if(result) {
-		numPassed++;
-	      } else {
-		numFailed++;
-	      }
+              ++numExecuted;
 
-	      ++numExecuted;
+              bar.tick();
 
-	      bar.tick();
+              if(!checkDone()) {
+                if(numRunning < cpus && numExecuted + numRunning < numTests) {
+                  runTest(tests.shift());
+                }
+              }
+            });
+          }
 
-	      if(!checkDone()) {
-		if(numRunning < cpus && numExecuted + numRunning < numTests) {
-		  runTest(tests.shift());
-		}
-	      }
-	    });
-	  }
+          var numTests = tests.length;
+          var numPassed = 0;
+          var numFailed = 0;
+          var numExecuted = 0;
 
-	  var numTests = tests.length;
-	  var numPassed = 0;
-	  var numFailed = 0;
-	  var numExecuted = 0;
+          var numRunning = 0;
 
-	  var numRunning = 0;
+          var cpus = os.cpus().length;
 
-	  var cpus = os.cpus().length;
+          var bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
+            width: numTests <= 100 ? numTests : 100,
+            total: numTests,
+            complete: '●',
+            incomplete: '◦'
+          });
 
-	  var bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
-	    width: numTests <= 100 ? numTests : 100,
-	    total: numTests,
-	    complete: '●',
-	    incomplete: '◦'
-	  });
+          console.log('\n' + chalk.yellow(numTests + ' tests to be executed by ' + cpus + ' cores.') + '\n');
 
-	  console.log('\n' + chalk.yellow(numTests + ' tests to be executed by ' + cpus + ' cores.') + '\n');
-
-	  for(var i = 0; i < cpus; i++) {
-	    runTest(tests.shift());
-	  }
+          for(var i = 0; i < cpus; i++) {
+            runTest(tests.shift());
+          }
         });
       });
     });
@@ -208,7 +208,7 @@ function execute(job, cmd, cb) {
   exec(cmd, function(err, stdout, stderr) {
     if(err || stderr) {
       if(job) {
-	printJobFailed();
+        printJobFailed();
       }
 
       if(cb) {
