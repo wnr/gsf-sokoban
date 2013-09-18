@@ -4,7 +4,8 @@
   "description": "Google Search First Sokoban",
   "main": "test",
   "dependencies": {
-    "chalk": "~0.2.1"
+    "chalk": "~0.2.1",
+    "progress": "~1.1.0"
   },
   "scripts": {
     "test": "make"

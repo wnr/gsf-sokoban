@@ -9,6 +9,8 @@
 var chalk = require('chalk');
 var exec = require('child_process').exec;
 var fs = require('fs');
+var os = require('os');
+var ProgessBar = require('progress');
 
 //-----------------------------------------------------------------------------
 // Main execution point
@@ -31,7 +33,75 @@ removeDir('temp', function(err) {
         if(err) throw err;
 
         readTestData('test.data', function(err, tests) {
-          
+	  function checkDone() {
+	    if(numExecuted >= numTests) {
+	      console.log('');
+
+	      var elapsed = new Date() - bar.start;
+
+	      printResult(numExecuted, numPassed, numFailed, elapsed);
+
+		// removeDir('temp', function(err) {
+		//   //Done.
+		// });
+
+	      return true;
+	    }
+
+	    return false;
+	  }
+
+	  function runTest(data) {
+	    numRunning++;
+	    test(data, function(err, result) {
+	      numRunning--;
+
+	      if(err) {
+		numFailed++;
+		numExecuted++;
+		bar.tick();
+		throw err;
+	      }
+
+	      if(result) {
+		numPassed++;
+	      } else {
+		numFailed++;
+	      }
+
+	      ++numExecuted;
+
+	      bar.tick();
+
+	      if(!checkDone()) {
+		if(numRunning < cpus && numExecuted + numRunning < numTests) {
+		  runTest(tests.shift());
+		}
+	      }
+	    });
+	  }
+
+	  var numTests = tests.length;
+	  var numPassed = 0;
+	  var numFailed = 0;
+	  var numExecuted = 0;
+
+	  var numRunning = 0;
+
+	  var cpus = os.cpus().length;
+
+	  var bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
+	    width: numTests <= 100 ? numTests : 100,
+	    total: numTests,
+	    complete: '●',
+	    incomplete: '◦'
+	  });
+
+	  console.log('\n' + chalk.yellow(numTests + ' tests to be executed by ' + cpus + ' cores.') + '\n');
+
+	  for(var i = 0; i < cpus; i++) {
+	    runTest(tests.shift());
+	  }
         });
       });
     });
@@ -41,6 +111,20 @@ removeDir('temp', function(err) {
 //-----------------------------------------------------------------------------
 // Helper functions
 //-----------------------------------------------------------------------------
+
+function printResult(total, passed, failed, elapsed) {
+  // printHeader('Test results');
+  // console.log('');
+
+  console.log('Total:    ' + total);
+  console.log('Passed:   ' + chalk.green(passed.toString()));
+  console.log('Failed:   ' + chalk.red(failed.toString()));
+  console.log('Time:     ' + chalk.yellow((elapsed / 1000).toFixed(1) + ' s'));
+}
+
+function test(map, cb) {
+  execute('echo "' + map + '" | java -cp temp/out.sokoban Main > /dev/null', cb);
+}
 
 function readTestData(file, cb) {
   if(!cb) {
@@ -108,17 +192,24 @@ function compile(cb) {
 function execute(job, cmd, cb) {
   if(!cmd) {
     cmd = job;
+    job = null;
   }
 
   if(typeof cmd === 'function') {
     cb = cmd;
     cmd = job;
+    job = null;
   }
 
-  printJob(job);
+  if(job) {
+    printJob(job);
+  }
+
   exec(cmd, function(err, stdout, stderr) {
     if(err || stderr) {
-      printJobFailed();
+      if(job) {
+	printJobFailed();
+      }
 
       if(cb) {
         return cb(err || new Error(stderr));
@@ -127,10 +218,12 @@ function execute(job, cmd, cb) {
       }
     }
 
-    printJobDone();
+    if(job) {
+      printJobDone();
+    }
 
     if(cb) {
-      cb(stdout);
+      cb(null, stdout);
     }
   });
 }
