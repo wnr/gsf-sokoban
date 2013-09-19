@@ -16,9 +16,13 @@ var ProgessBar = require('progress');
 // Main execution point
 //-----------------------------------------------------------------------------
 
-console.log('');
+var config = {
+  tests: 20
+};
+
+config.tests = process.argv[2] || config.tests;
+
 printHeader('Google Search First Sokoban Test');
-console.log('');
 
 removeDir('temp', function(err) {
   if(err) throw err;
@@ -32,7 +36,7 @@ removeDir('temp', function(err) {
       compile(function(err) {
         if(err) throw err;
 
-        readTestData('test.data', function(err, tests) {
+        readTestData('test.data', config.tests, function(err, tests) {
           function checkDone() {
             if(numExecuted >= numTests) {
               console.log('');
@@ -40,6 +44,14 @@ removeDir('temp', function(err) {
               var elapsed = new Date() - bar.start;
 
               printResult(numExecuted, numPassed, numFailed, elapsed);
+
+              if(exceptions.length) {
+                printHeader('Exceptions', chalk.red);
+
+                for(var i = 0; i < exceptions.length; i++) {
+                  console.log(chalk.red(exceptions[i].test) + '\n' + exceptions[i].err /*+ '\n' + chalk.yellow('Test with: ' + exceptions[i].cmd) */);
+                }
+              }
 
                 // removeDir('temp', function(err) {
                 //   //Done.
@@ -55,21 +67,23 @@ removeDir('temp', function(err) {
             numRunning++;
             test(data, function(err, result) {
               numRunning--;
+              numExecuted++;
 
-              if(err) {
+              if(err || !result) {
                 numFailed++;
-                numExecuted++;
-                bar.tick();
-                throw err;
+
+                if(err) {
+                  exceptions.push({
+                    test: 'Test ' + (numFailed + numPassed + 1),
+                    err: err.message,
+                    cmd: 'echo "' + data + '" | java -cp temp/out.sokoban Main'
+                  });
+                }
               }
 
               if(result) {
                 numPassed++;
-              } else {
-                numFailed++;
               }
-
-              ++numExecuted;
 
               bar.tick();
 
@@ -81,6 +95,8 @@ removeDir('temp', function(err) {
             });
           }
 
+          var exceptions = [];
+
           var numTests = tests.length;
           var numPassed = 0;
           var numFailed = 0;
@@ -91,7 +107,7 @@ removeDir('temp', function(err) {
           var cpus = os.cpus().length;
 
           var bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
-            width: numTests <= 100 ? numTests : 100,
+            width: (numTests <= 100 ? numTests : 100) + 1,
             total: numTests,
             complete: '●',
             incomplete: '◦'
@@ -99,7 +115,7 @@ removeDir('temp', function(err) {
 
           console.log('\n' + chalk.yellow(numTests + ' tests to be executed by ' + cpus + ' cores.') + '\n');
 
-          for(var i = 0; i < cpus; i++) {
+          for(var i = 0; i < cpus && i < numTests; i++) {
             runTest(tests.shift());
           }
         });
@@ -126,7 +142,7 @@ function test(map, cb) {
   execute('echo "' + map + '" | java -cp temp/out.sokoban Main > /dev/null', cb);
 }
 
-function readTestData(file, cb) {
+function readTestData(file, limit, cb) {
   if(!cb) {
     throw new Error('Callback required.');
   }
@@ -138,7 +154,7 @@ function readTestData(file, cb) {
       return cb(err);
     }
 
-    var result = data.split(/;LEVEL \d+/).splice(1);
+    var result = data.split(/;LEVEL \d+/).splice(1, limit);
 
     printJobDone();
 
@@ -156,9 +172,9 @@ function printHeader(str, color) {
   var leftSpace = new Array(length/2 - 1 - Math.floor(str.length/2)).join(' ');
   var rightSpace = new Array(length/2 - leftSpace - Math.ceil(str.length/2)).join(' ');
 
-  console.log(color(new Array(length).join('#')));
+  console.log('\n' + color(new Array(length).join('#')));
   console.log(color('#') + leftSpace + str + rightSpace + color('#'));
-  console.log(color(new Array(50).join('#')));
+  console.log(color(new Array(50).join('#')) + '\n');
 }
 
 function printJob(str) {
