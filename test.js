@@ -37,89 +37,11 @@ removeDir('temp', function(err) {
         if(err) { throw err; }
 
         readTestData('test.data', config.tests, function(err, tests) {
-          function checkDone() {
-            if(numExecuted >= numTests) {
-              console.log('');
-
-              var elapsed = new Date() - bar.start;
-
-              printResult(numExecuted, numPassed, numFailed, elapsed);
-
-              if(exceptions.length) {
-                printHeader('Exceptions', chalk.red);
-
-                for(var i = 0; i < exceptions.length; i++) {
-                  console.log(chalk.red(exceptions[i].test) + '\n' + exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + exceptions[i].cmd) */);
-                }
-              }
-
-              console.log('\n');
-
-              //removeDir('temp', function(err) {
-                //Done.
-              //});
-
-              return true;
-            }
-
-            return false;
-          }
-
-          function runTest(data) {
-            numRunning++;
-            test(data.map, function(err, result) {
-              numRunning--;
-              numExecuted++;
-
-              if(err || !result) {
-                numFailed++;
-
-                if(err) {
-                  exceptions.push({
-                    test: 'Test ' + data.level,
-                    err: err.message,
-                    cmd: 'echo "' + data.map + '" | java -cp temp/out.sokoban Main'
-                  });
-                }
-              }
-
-              if(result) {
-                numPassed++;
-              }
-
-              bar.tick();
-
-              if(!checkDone()) {
-                if(numRunning < cpus && numExecuted + numRunning < numTests) {
-                  runTest(tests.shift());
-                }
-              }
-            });
-          }
-
-          var exceptions = [];
-
-          var numTests = tests.length;
-          var numPassed = 0;
-          var numFailed = 0;
-          var numExecuted = 0;
-
-          var numRunning = 0;
-
-          var cpus = os.cpus().length;
-
-          var bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
-            width: (numTests <= 100 ? numTests : 100) + 1,
-            total: numTests,
-            complete: '●',
-            incomplete: '◦'
+          var tester = new Tester(tests);
+          tester.run(function done() {
+            tester.printResults();
+            tester.printExceptions();
           });
-
-          console.log('\n' + chalk.yellow(numTests + ' tests to be executed by ' + cpus + ' cores.') + '\n');
-
-          for(var i = 0; i < cpus && i < numTests; i++) {
-            runTest(tests.shift());
-          }
         });
       });
     });
@@ -127,18 +49,125 @@ removeDir('temp', function(err) {
 });
 
 //-----------------------------------------------------------------------------
-// Helper functions
+// Classes
 //-----------------------------------------------------------------------------
 
-function printResult(total, passed, failed, elapsed) {
-  // printHeader('Test results');
-  // console.log('');
+function Tester(maps) {
+  if(!Array.isArray(maps)) {
+    throw new Error('Maps data required');
+  }
 
-  console.log('Total:    ' + total);
-  console.log('Passed:   ' + chalk.green(passed.toString()));
-  console.log('Failed:   ' + chalk.red(failed.toString()));
-  console.log('Time:     ' + chalk.yellow((elapsed / 1000).toFixed(1) + ' s'));
+  this.maps = maps;
+  this.tests = maps.length;
+  this.executed = 0;
+  this.passed = 0;
+  this.failed = 0;
+  this.running = 0;
+  this.exceptions = [];
+  this.elapsed = 0;
+  this.cpus = os.cpus().length;
+
+  this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
+    width: (this.tests <= 100 ? this.tests : 100) + 1,
+    total: this.tests,
+    complete: '●',
+    incomplete: '◦'
+  });
 }
+
+Tester.prototype.run = function(print, cb) {
+  if(!cb && typeof print === 'function') {
+    cb = print;
+    print = null;
+  }
+
+  if(!print) {
+    print = true;
+  }
+
+  if(print) {
+    console.log('\n' + chalk.yellow(this.tests + ' tests to be executed by ' + this.cpus + ' cores.') + '\n');
+  }
+
+  for(var i = 0; i < this.cpus && i < this.tests; i++) {
+    var m = this.maps.shift();
+    this.test(m.map, m.level, cb);
+  }
+};
+
+Tester.prototype.isDone = function() {
+  if(this.executed >= this.tests) {
+    this.elapsed = new Date() - this.bar.start;
+    return true;
+  }
+
+  return false;
+};
+
+Tester.prototype.test = function(map, level, cb) {
+  this.running++;
+
+  var self = this;
+
+  test(map, function(err, result) {
+    self.running--;
+    self.executed++;
+
+    if(err || !result) {
+      self.failed++;
+
+      if(err) {
+        self.exceptions.push({
+          test: 'Test ' + level,
+          err: err.message,
+          cmd: 'echo "' + map + '" | java -cp temp/out.sokoban Main'
+        });
+      }
+    }
+
+    if(result) {
+      self.passed++;
+    }
+
+    self.bar.tick();
+
+    if(self.isDone()) {
+      if(cb) {
+        cb();
+      }
+    } else {
+      if(self.running < self.cpus && self.executed + self.running < self.tests) {
+        var test = self.maps.shift();
+        self.test(test.map,  test.level, cb);
+      }
+    }
+  });
+};
+
+Tester.prototype.printExceptions = function() {
+  console.log('');
+
+  if(this.exceptions.length) {
+    printHeader('Exceptions', chalk.red);
+
+    for(var i = 0; i < this.exceptions.length; i++) {
+      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + exceptions[i].cmd) */);
+    }
+  }
+
+  console.log('\n');
+};
+
+Tester.prototype.printResults = function() {
+  console.log('Total:    ' + this.total);
+  console.log('Passed:   ' + chalk.green(this.passed.toString()));
+  console.log('Failed:   ' + chalk.red(this.failed.toString()));
+  console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
+};
+
+//-----------------------------------------------------------------------------
+// Helper functions
+//-----------------------------------------------------------------------------
 
 function test(map, cb) {
   execute('echo "' + map + '" | java -cp temp/out.sokoban Main > /dev/null', cb);
@@ -153,7 +182,8 @@ function readTestData(file, limit, cb) {
   fs.readFile(file, 'utf8', function(err, data) {
     if(err) {
       printJobFailed();
-      return cb(err);
+      cb(err);
+      return;
     }
 
     var result = data.split(/;LEVEL \d+/).splice(1, limit);
@@ -237,7 +267,8 @@ function execute(job, cmd, cb) {
       }
 
       if(cb) {
-        return cb(err || new Error(stderr));
+        cb(err || new Error(stderr));
+        return;
       } else {
         throw err || new Error(stderr);
       }
