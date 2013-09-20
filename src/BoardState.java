@@ -16,14 +16,15 @@ public class BoardState {
     public static final int LEFT = 3;
 
     private static final int FREE_SPACE = 0;
-    private static final int GOAL = 1;
-    private static final int WALL = 2;
-    private static final int PLAYER = 3;
-    private static final int PLAYER_ON_GOAL = 4;
-    private static final int BOX = 5;
-    private static final int BOX_ON_GOAL = 6;
+    private static final int WALL = 1;
+    private static final int GOAL = 2;
+    private static final int PLAYER = 4;
+    private static final int BOX = 8;
+    private static final int PLAYER_ON_GOAL = PLAYER | GOAL;
+    private static final int BOX_ON_GOAL = BOX | GOAL;
+    private static final int NOT_FREE = WALL | BOX;
 
-    private char[] boardCharacters = {FREE_SPACE_CHAR, GOAL_CHAR, WALL_CHAR, PLAYER_CHAR, PLAYER_ON_GOAL_CHAR, BOX_CHAR, BOX_ON_GOAL_CHAR};
+    private char[] boardCharacters = {FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR};
     private static HashMap<Character, Integer> characterMapping;
     static {
         characterMapping = new HashMap<Character, Integer>();
@@ -43,10 +44,13 @@ public class BoardState {
 
     private int width, height;
     private int playerRow, playerCol;
+    public int goalCnt, boxCnt;
+    public int playerCnt;
     private int[][] board;
 
     public BoardState(List<String> lines) {
         height = lines.size();
+        width = 0;
         for (String line : lines) {
             width = Math.max(width, line.length());
         }
@@ -56,9 +60,16 @@ public class BoardState {
             int col = 0;
             for (char cell : line.toCharArray()) {
                 board[row][col] = characterMapping.get(cell);
-                if (cell == PLAYER_CHAR || cell == PLAYER_ON_GOAL_CHAR) {
+                if (isPlayer(row, col)) {
+                    playerCnt++;
                     playerRow = row;
                     playerCol = col;
+                }
+                if (isBox(row, col)) {
+                    boxCnt++;
+                }
+                if (isGoal(row, col)) {
+                    goalCnt++;
                 }
                 col++;
             }
@@ -120,16 +131,36 @@ public class BoardState {
         playerCol = newCol;
     }
 
+    public boolean isWall(int row, int col) {
+        return board[row][col] == WALL;
+    }
+
+    public boolean isGoal(int row, int col) {
+        return (board[row][col] & GOAL) != 0;
+    }
+
     public boolean isBox(int row, int col) {
-        return board[row][col] >= 5;
+        return (board[row][col] & BOX) != 0;
+    }
+
+    public boolean isPlayer(int row, int col) {
+        return (board[row][col] & PLAYER) != 0;
     }
 
     public boolean isFree(int row, int col) {
-        return board[row][col] < 2;
+        return (board[row][col] & NOT_FREE) == 0;
     }
 
     public boolean onBoard(int row, int col) {
         return row >= 0 && row < height && col >= 0 && col < width;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
     }
 
     public String toString() {
