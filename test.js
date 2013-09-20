@@ -25,16 +25,16 @@ config.tests = process.argv[2] || config.tests;
 printHeader('Google Search First Sokoban Test');
 
 removeDir('temp', function(err) {
-  if(err) throw err;
+  if(err) { throw err; }
 
   createDir('temp', function(err) {
-    if(err) throw err;
+    if(err) { throw err; }
 
     createDir('temp/out.sokoban', function(err) {
-      if(err) throw err;
+      if(err) { throw err; }
 
       compile(function(err) {
-        if(err) throw err;
+        if(err) { throw err; }
 
         readTestData('test.data', config.tests, function(err, tests) {
           function checkDone() {
@@ -49,14 +49,16 @@ removeDir('temp', function(err) {
                 printHeader('Exceptions', chalk.red);
 
                 for(var i = 0; i < exceptions.length; i++) {
-                  console.log(chalk.red(exceptions[i].test) + '\n' + exceptions[i].err /*+ '\n' + chalk.yellow('Test with: ' + exceptions[i].cmd) */);
+                  console.log(chalk.red(exceptions[i].test) + '\n' + exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + exceptions[i].cmd) */);
                 }
               }
 
-                // removeDir('temp', function(err) {
-                //   //Done.
-                // });
-              
+              console.log('\n');
+
+              //removeDir('temp', function(err) {
+                //Done.
+              //});
+
               return true;
             }
 
@@ -65,7 +67,7 @@ removeDir('temp', function(err) {
 
           function runTest(data) {
             numRunning++;
-            test(data, function(err, result) {
+            test(data.map, function(err, result) {
               numRunning--;
               numExecuted++;
 
@@ -74,9 +76,9 @@ removeDir('temp', function(err) {
 
                 if(err) {
                   exceptions.push({
-                    test: 'Test ' + (numFailed + numPassed + 1),
+                    test: 'Test ' + data.level,
                     err: err.message,
-                    cmd: 'echo "' + data + '" | java -cp temp/out.sokoban Main'
+                    cmd: 'echo "' + data.map + '" | java -cp temp/out.sokoban Main'
                   });
                 }
               }
@@ -155,6 +157,13 @@ function readTestData(file, limit, cb) {
     }
 
     var result = data.split(/;LEVEL \d+/).splice(1, limit);
+
+    for(var i = 0; i < result.length; i++) {
+      result[i] = {
+        level: i+1,
+        map: result[i]
+      };
+    }
 
     printJobDone();
 
