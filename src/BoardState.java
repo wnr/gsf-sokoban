@@ -47,6 +47,7 @@ public class BoardState {
     public int goalCnt, boxCnt;
     public int playerCnt;
     private int[][] board;
+    private StackEntry previousMove;
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -80,21 +81,40 @@ public class BoardState {
     public boolean performMove(int direction) {
         int newRow = playerRow + dr[direction];
         int newCol = playerCol + dc[direction];
+        boolean successful = false;
         if (onBoard(newRow, newCol)) {
             if (isFree(newRow, newCol)) {
                 movePlayer(newRow, newCol);
-                return true;
+                successful = true;
+                previousMove = new StackEntry(direction, previousMove);
             } else if (isBox(newRow, newCol)) {
                 int newRow2 = newRow + dr[direction];
                 int newCol2 = newCol + dc[direction];
                 if (onBoard(newRow2, newCol2) && isFree(newRow2, newCol2)) {
                     moveBox(newRow, newCol, newRow2, newCol2);
                     movePlayer(newRow, newCol);
-                    return true;
+                    successful = true;
+                    previousMove = new StackEntry(direction|4, previousMove);
                 }
             }
         }
-        return false;
+        return successful;
+    }
+
+    public boolean reverseMove() {
+        if (previousMove == null) return false;
+        boolean movedBox = (previousMove.val & 4) != 0;
+        int dir = previousMove.val&3;
+        int oppositeDir = getOppositeDirection(dir);
+        int r1 = playerRow, c1 = playerCol;
+        int r0 = r1 + dr[oppositeDir], c0 = c1 + dc[oppositeDir];
+        movePlayer(r0, c0);
+        if (movedBox) {
+            int r2 = r1 + dr[dir], c2 = c1 + dc[dir];
+            moveBox(r2, c2, r1, c1);
+        }
+        previousMove = previousMove.prev;
+        return true;
     }
 
     /*
@@ -129,6 +149,10 @@ public class BoardState {
         }
         playerRow = newRow;
         playerCol = newCol;
+    }
+
+    public static int getOppositeDirection(int direction) {
+        return (direction + 2)&3;
     }
 
     public boolean isWall(int row, int col) {
@@ -172,5 +196,14 @@ public class BoardState {
             sb.append('\n');
         }
         return sb.toString();
+    }
+
+    static class StackEntry {
+        int val;
+        StackEntry prev;
+        public StackEntry(int val, StackEntry prev) {
+            this.val = val;
+            this.prev = prev;
+        }
     }
 }
