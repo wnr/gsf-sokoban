@@ -10,19 +10,43 @@ import java.util.ArrayList;
  * Class used to play a board via the terminal.
  *
  * Great for testing BoardState stuff!
+ *
+ * There are two ways of running it:
+ * 1. With no arguments, giving a board on stdin (easiest by piping from a file)
+ * 2. With 1 argument, a number specifying which level from the test boards you want to play (11000+ boards available)
  */
 public class Play {
 
     public static void main(String[] args) throws IOException {
-        ArrayList<String> lines = new ArrayList<String>();
-        BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
+        if (args.length == 0) {
+            // Read board from stdin
+            ArrayList<String> lines = new ArrayList<String>();
+            BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 
-        String line;
-        while ((line = in.readLine()) != null) {
-            lines.add(line);
+            String line;
+            while ((line = in.readLine()) != null) {
+                lines.add(line);
+            }
+            BoardState board = new BoardState(lines);
+            boardInteract(board);
+        } else if (args.length == 1) {
+            int boardNum = -1;
+            try {
+                boardNum = Integer.parseInt(args[0]);
+            } catch (NumberFormatException e) {
+                System.out.println("Argument must be a board number");
+                System.exit(0);
+            }
+            System.out.println("Searching for board " + boardNum + "...");
+            ArrayList<BoardState> boards = BoardUtil.readTestBoards();
+            if (boardNum <= 0 || boardNum > boards.size()) {
+                System.out.println("Invalid board number: " + boardNum);
+                System.exit(0);
+            }
+            System.out.println("Found board!");
+            System.out.println("===================================================");
+            boardInteract(boards.get(boardNum - 1));
         }
-        BoardState board = new BoardState(lines);
-        boardInteract(board);
     }
 
 
