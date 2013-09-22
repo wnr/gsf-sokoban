@@ -119,23 +119,62 @@ public class BoardState {
         int newRow = playerRow + dr[direction];
         int newCol = playerCol + dc[direction];
         boolean successful = false;
-        if (onBoard(newRow, newCol)) {
-            if (isFree(newRow, newCol)) {
+
+        // We don't check if the move is outside the board since the player always is surrounded by walls
+        if (isFree(newRow, newCol)) {
+            movePlayer(newRow, newCol);
+            successful = true;
+            previousMove = new StackEntry(direction, previousMove);
+        } else if (isBox(newRow, newCol)) {
+            int newRow2 = newRow + dr[direction];
+            int newCol2 = newCol + dc[direction];
+            if (onBoard(newRow2, newCol2) && isFree(newRow2, newCol2)) {
+                moveBox(newRow, newCol, newRow2, newCol2);
                 movePlayer(newRow, newCol);
                 successful = true;
-                previousMove = new StackEntry(direction, previousMove);
-            } else if (isBox(newRow, newCol)) {
-                int newRow2 = newRow + dr[direction];
-                int newCol2 = newCol + dc[direction];
-                if (onBoard(newRow2, newCol2) && isFree(newRow2, newCol2)) {
-                    moveBox(newRow, newCol, newRow2, newCol2);
-                    movePlayer(newRow, newCol);
-                    successful = true;
-                    previousMove = new StackEntry(direction|4, previousMove);
-                }
+                previousMove = new StackEntry(direction|4, previousMove);
             }
         }
         return successful;
+    }
+
+    /*
+     * Determines whether the move does not create an unsolvable situation
+     */
+    public boolean isGoodMove(int direction) {
+        int newRow = playerRow + dr[direction];
+        int newCol = playerCol + dc[direction];
+        if (isFree(newRow, newCol)) return true;
+        boolean good = false;
+        if (isBox(newRow, newCol)) {
+            int newRow2 = newRow + dr[direction];
+            int newCol2 = newCol + dc[direction];
+            if (isFree(newRow2, newCol2) && !isTrappingCell(newRow2, newCol2)) {
+                good = true;
+                moveBox(newRow, newCol, newRow2, newCol2);
+                good &= checkIfValidBox(newRow2 - 1, newCol2 - 1);
+                good &= checkIfValidBox(newRow2 - 1, newCol2    );
+                good &= checkIfValidBox(newRow2    , newCol2 - 1);
+                good &= checkIfValidBox(newRow2    , newCol2    );
+                moveBox(newRow2, newCol2, newRow, newCol);
+            }
+        }
+        return good;
+    }
+
+    /*
+     * Checks if the 2x2 box with top-left corner at (row, col) is valid, that is that it isn't
+     * completely filled with walls/boxes or that every box is at a goal
+     */
+    private boolean checkIfValidBox(int row, int col) {
+        boolean unmatchedBox = false;
+        for (int rowDiff = 0; rowDiff < 2; rowDiff++) {
+            for (int colDiff = 0; colDiff < 2; colDiff++) {
+                if (isFree(row + rowDiff, col + colDiff)) return true;
+                unmatchedBox |= board[row + rowDiff][col + colDiff] == BOX;
+            }
+        }
+        return !unmatchedBox;
     }
 
     public boolean reverseMove() {
@@ -152,6 +191,16 @@ public class BoardState {
         }
         previousMove = previousMove.prev;
         return true;
+    }
+
+    public int directionLastMove() {
+        if (previousMove == null) return -1;
+        return previousMove.val&3;
+    }
+
+    public boolean movedBoxLastMove() {
+        if (previousMove == null) return false;
+        return (previousMove.val & 4) != 0;
     }
 
     /*

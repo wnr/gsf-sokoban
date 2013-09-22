@@ -38,14 +38,14 @@ public class Play {
                 System.exit(0);
             }
             System.out.println("Searching for board " + boardNum + "...");
-            ArrayList<BoardState> boards = BoardUtil.readTestBoards();
-            if (boardNum <= 0 || boardNum > boards.size()) {
+            BoardState board = BoardUtil.getTestBoard(boardNum);
+            if (board == null) {
                 System.out.println("Invalid board number: " + boardNum);
                 System.exit(0);
             }
             System.out.println("Found board!");
             System.out.println("===================================================");
-            boardInteract(boards.get(boardNum - 1));
+            boardInteract(board);
         }
     }
 
@@ -63,18 +63,19 @@ public class Play {
             public boolean dispatchKeyEvent(KeyEvent keyEvent) {
                 if (keyEvent.getID() == KeyEvent.KEY_PRESSED) {
                     boolean changed = false;
+                    int move = -1;
                     switch (keyEvent.getKeyCode()) {
                         case KeyEvent.VK_LEFT:
-                            changed = b.performMove(BoardState.LEFT);
+                            move = BoardState.LEFT;
                             break;
                         case KeyEvent.VK_UP:
-                            changed = b.performMove(BoardState.UP);
+                            move = BoardState.UP;
                             break;
                         case KeyEvent.VK_RIGHT:
-                            changed = b.performMove(BoardState.RIGHT);
+                            move = BoardState.RIGHT;
                             break;
                         case KeyEvent.VK_DOWN:
-                            changed = b.performMove(BoardState.DOWN);
+                            move = BoardState.DOWN;
                             break;
                         case KeyEvent.VK_SPACE:
                             changed = b.reverseMove();
@@ -92,6 +93,13 @@ public class Play {
                             break;
                         default:
                             return false;
+                    }
+                    if (move >= 0) {
+                        boolean goodMove = b.isGoodMove(move);
+                        changed = b.performMove(move);
+                        if (changed && !goodMove) {
+                            System.out.println("Board now unsolvable :/");
+                        }
                     }
                     if (changed) System.out.println(b);
                     if (b.isBoardSolved()) {
