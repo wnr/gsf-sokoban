@@ -47,11 +47,11 @@ public class BoardState {
     private int width, height;
     private int playerRow, playerCol;
     public int goalCnt, boxCnt;
-    public int playerCnt;
-    private int[][] board;
     private StackEntry previousMove;
+    public  int                      playerCnt;
+    private int[][]                  board;
     private Pair<Integer, Integer>[] goalCells;
-    private boolean[][] aliveCells;
+    private boolean[][]              trappingCells;
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -70,7 +70,8 @@ public class BoardState {
                     playerCnt++;
                     playerRow = row;
                     playerCol = col;
-                }else if(cell == GOAL_CHAR || cell == PLAYER_ON_GOAL_CHAR || cell == BOX_ON_GOAL_CHAR){
+                }
+                else if (cell == GOAL_CHAR || cell == PLAYER_ON_GOAL_CHAR || cell == BOX_ON_GOAL_CHAR) {
                     tempGoalCells.add(new Pair<Integer, Integer>(row, col));
                 }
                 if (isBox(row, col)) {
@@ -85,29 +86,29 @@ public class BoardState {
         }
         goalCells = new Pair[tempGoalCells.size()];
 
-        for(int i = 0; i<tempGoalCells.size(); i++){
+        for (int i = 0; i < tempGoalCells.size(); i++) {
             goalCells[i] = tempGoalCells.get(i);
-
         }
-        setAliveCells();
-    }
-    private void setAliveCells(){
-        aliveCells = new boolean[height][width];
-        for(Pair<Integer, Integer> goal: goalCells){
-            traverseAliveCells(goal.fst, goal.snd, 0);
-        }
+        setTrappingCells();
     }
 
-    private void traverseAliveCells(int row, int col, int direction){
+    private void setTrappingCells() {
+        trappingCells = new boolean[height][width];
+        for (Pair<Integer, Integer> goal : goalCells) {
+            traverseTrappingCells(goal.fst, goal.snd, 0);
+        }
+    }
+
+    private void traverseTrappingCells(int row, int col, int direction) {
         int newRow = row + dr[direction];
         int newCol = col + dc[direction];
-        if(!isWall(newRow, newCol) || isGoal(row, col)){
-            aliveCells[row][col] = true;
-            for(int i = 0; i<4; i++){
+        if (!isWall(newRow, newCol) || isGoal(row, col)) {
+            trappingCells[row][col] = true;
+            for (int i = 0; i < 4; i++) {
                 newRow = row + dr[i];
                 newCol = col + dc[i];
-                if(!aliveCells[newRow][newCol] && !isWall(newRow, newCol)){
-                    traverseAliveCells(newRow, newCol, i);
+                if (!trappingCells[newRow][newCol] && !isWall(newRow, newCol)){
+                    traverseTrappingCells(newRow, newCol, i);
                 }
             }
         }
@@ -202,6 +203,10 @@ public class BoardState {
         return (direction + 2)&3;
     }
 
+    public boolean isTrappingCell(int row, int col){
+        return !trappingCells[row][col];
+    }
+
     public boolean isWall(int row, int col) {
         return board[row][col] == WALL;
     }
@@ -261,5 +266,22 @@ public class BoardState {
             this.val = val;
             this.prev = prev;
         }
+    }
+
+    public String aliveCellsToString() {
+        StringBuilder sb = new StringBuilder();
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                if(isWall(row,col)){
+                    sb.append(boardCharacters[board[row][col]]);
+                }else if(!trappingCells[row][col]){
+                    sb.append('x');
+                }else{
+                    sb.append(FREE_SPACE_CHAR);
+                }
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
     }
 }
