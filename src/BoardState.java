@@ -118,6 +118,18 @@ public class BoardState {
     }
 
     /*
+     * Resets the board to the starting position and returns the path that was taken
+     */
+    public String backtrackPath() {
+        StringBuilder sb = new StringBuilder();
+        while (previousMove != null) {
+            sb.append(directionCharacters[previousMove.val&3]);
+            reverseMove();
+        }
+        return sb.reverse().toString();
+    }
+
+    /*
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {

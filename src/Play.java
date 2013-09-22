@@ -79,6 +79,14 @@ public class Play {
                         case KeyEvent.VK_SPACE:
                             changed = b.reverseMove();
                             break;
+                        case KeyEvent.VK_BACK_SPACE:
+                            String path = b.backtrackPath();
+                            if (path.length() > 0) {
+                                changed = true;
+                                System.out.println("Path taken:");
+                                System.out.println(path);
+                            }
+                            break;
                         case KeyEvent.VK_ESCAPE:
                             System.exit(0);
                             break;
@@ -96,7 +104,8 @@ public class Play {
         System.out.println("Instructions:");
         System.out.println("1. Use arrow keys to move");
         System.out.println("2. Space bar to regret the last move");
-        System.out.println("3. Escape to quit");
+        System.out.println("3. Backspace to print the total path and reset the board");
+        System.out.println("4. Escape to quit");
         System.out.println();
         System.out.println(b);
     }
