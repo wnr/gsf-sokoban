@@ -1,7 +1,5 @@
 import java.util.*;
 
-import com.sun.tools.javac.util.Pair;
-
 public class BoardState {
 
     public static final char FREE_SPACE_CHAR = ' ';
@@ -44,13 +42,13 @@ public class BoardState {
     private static int[] dc = {0, 1, 0, -1};
     private static char[] directionCharacters = {'U', 'R', 'D', 'L'};
 
-    private int width, height;
-    private int playerRow, playerCol;
-    public int goalCnt, boxCnt;
-    private StackEntry previousMove;
+    private int                      width, height;
+    private int                      playerRow, playerCol;
+    public  int                      goalCnt, boxCnt;
+    private StackEntry               previousMove;
     public  int                      playerCnt;
     private int[][]                  board;
-    private Pair<Integer, Integer>[] goalCells;
+    private int[][]                  goalCells;
     private boolean[][]              trappingCells;
 
     public BoardState(List<String> lines) {
@@ -61,7 +59,7 @@ public class BoardState {
         }
         board = new int[height][width];
         int row = 0;
-        List<Pair<Integer, Integer>> tempGoalCells = new ArrayList<Pair<Integer, Integer>>();
+        List<int[]> tempGoalCells = new ArrayList<int[]>();
         for (String line : lines) {
             int col = 0;
             for (char cell : line.toCharArray()) {
@@ -71,20 +69,18 @@ public class BoardState {
                     playerRow = row;
                     playerCol = col;
                 }
-                else if (cell == GOAL_CHAR || cell == PLAYER_ON_GOAL_CHAR || cell == BOX_ON_GOAL_CHAR) {
-                    tempGoalCells.add(new Pair<Integer, Integer>(row, col));
+                if (isGoal(row, col)) {
+                    tempGoalCells.add(new int[] {row, col});
+                    goalCnt++;
                 }
                 if (isBox(row, col)) {
                     boxCnt++;
-                }
-                if (isGoal(row, col)) {
-                    goalCnt++;
                 }
                 col++;
             }
             row++;
         }
-        goalCells = new Pair[tempGoalCells.size()];
+        goalCells = new int[tempGoalCells.size()][];
 
         for (int i = 0; i < tempGoalCells.size(); i++) {
             goalCells[i] = tempGoalCells.get(i);
@@ -94,8 +90,13 @@ public class BoardState {
 
     private void setTrappingCells() {
         trappingCells = new boolean[height][width];
-        for (Pair<Integer, Integer> goal : goalCells) {
-            traverseTrappingCells(goal.fst, goal.snd, 0);
+        for (int i = 0; i < height; i++) {
+            Arrays.fill(trappingCells[i], true);
+        }
+        for (int[] goal : goalCells) {
+            if (trappingCells[goal[0]][goal[1]]) {
+                traverseTrappingCells(goal[0], goal[1], 0);
+            }
         }
     }
 
@@ -103,11 +104,11 @@ public class BoardState {
         int newRow = row + dr[direction];
         int newCol = col + dc[direction];
         if (!isWall(newRow, newCol) || isGoal(row, col)) {
-            trappingCells[row][col] = true;
+            trappingCells[row][col] = false;
             for (int i = 0; i < 4; i++) {
                 newRow = row + dr[i];
                 newCol = col + dc[i];
-                if (!trappingCells[newRow][newCol] && !isWall(newRow, newCol)){
+                if (trappingCells[newRow][newCol] && !isWall(newRow, newCol)){
                     traverseTrappingCells(newRow, newCol, i);
                 }
             }
@@ -188,7 +189,7 @@ public class BoardState {
     }
 
     public boolean isTrappingCell(int row, int col){
-        return !trappingCells[row][col];
+        return trappingCells[row][col];
     }
 
     public boolean isWall(int row, int col) {
@@ -212,8 +213,8 @@ public class BoardState {
     }
 
     public boolean isBoardSolved(){
-        for(Pair<Integer, Integer> goalPair: goalCells){
-            if(!(goalPair.fst == BOX_ON_GOAL)){
+        for(int[] goal: goalCells){
+            if(!(board[goal[0]][goal[1]] == BOX_ON_GOAL)){
                 return false;
             }
         }
@@ -258,7 +259,7 @@ public class BoardState {
             for (int col = 0; col < width; col++) {
                 if(isWall(row,col)){
                     sb.append(boardCharacters[board[row][col]]);
-                }else if(!trappingCells[row][col]){
+                }else if(isTrappingCell(row, col)){
                     sb.append('x');
                 }else{
                     sb.append(FREE_SPACE_CHAR);

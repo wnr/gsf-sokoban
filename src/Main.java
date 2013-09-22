@@ -21,7 +21,7 @@ public class Main {
         System.out.println(board);
         System.out.println(board.aliveCellsToString());
 
-        performMoves(board, "L U R U R U R U L L R D D L D D R U U U");
+//        performMoves(board, "L U R U R U R U L L R D D L D D R U U U");
     }
 
     public static void performMoves(BoardState board, String moves) {

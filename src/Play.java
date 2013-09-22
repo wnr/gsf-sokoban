@@ -94,6 +94,13 @@ public class Play {
                             return false;
                     }
                     if (changed) System.out.println(b);
+                    if (b.isBoardSolved()) {
+                        System.out.println("Board solved!");
+                        System.out.println("Path taken:");
+                        System.out.println(b.backtrackPath());
+                        System.out.println("Exiting..");
+                        System.exit(0);
+                    }
                     return true;
                 }
                 return false;
