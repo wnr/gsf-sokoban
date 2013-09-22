@@ -133,32 +133,16 @@ public class BoardState {
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
-        if (board[oldRow][oldCol] == BOX_ON_GOAL) {
-            board[oldRow][oldCol] = GOAL;
-        } else {
-            board[oldRow][oldCol] = FREE_SPACE;
-        }
-        if (board[newRow][newCol] == GOAL) {
-            board[newRow][newCol] = BOX_ON_GOAL;
-        } else {
-            board[newRow][newCol] = BOX;
-        }
+        board[oldRow][oldCol] &= ~BOX;
+        board[newRow][newCol] |= BOX;
     }
 
     /*
      * Helper method that does not do error checking
      */
     private void movePlayer(int newRow, int newCol) {
-        if (board[playerRow][playerCol] == PLAYER_ON_GOAL) {
-            board[playerRow][playerCol] = GOAL;
-        } else {
-            board[playerRow][playerCol] = FREE_SPACE;
-        }
-        if (board[newRow][newCol] == GOAL) {
-            board[newRow][newCol] = PLAYER_ON_GOAL;
-        } else {
-            board[newRow][newCol] = PLAYER;
-        }
+        board[playerRow][playerCol] &= ~PLAYER;
+        board[newRow][newCol] |= PLAYER;
         playerRow = newRow;
         playerCol = newCol;
     }
