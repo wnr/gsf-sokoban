@@ -7,5 +7,6 @@ out
 *.jar
 *.war
 *.ear
-
+/.idea/
+.DS_Store
 node_modules

@@ -10,12 +10,16 @@ public class Main {
 
         String line;
         while((line = in.readLine()) != null) {
+            if(line.contains(";")){
+                break;
+            }
             lines.add(line);
         }
 
         BoardState board = new BoardState(lines);
 
         System.out.println(board);
+        System.out.println(board.aliveCellsToString());
 
         performMoves(board, "L U R U R U R U L L R D D L D D R U U U");
     }
