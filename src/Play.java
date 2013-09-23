@@ -105,6 +105,7 @@ public class Play {
                     if (changed) {
                         System.out.println(b);
                         System.out.println("Been here? " + b.isPreviousGameState());
+                        b.hashCurrentGameState();
                     }
                     if (b.isBoardSolved()) {
                         System.out.println("Board solved!");

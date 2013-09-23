@@ -102,11 +102,10 @@ public class BoardState {
             playerAndBoxesHashCells.add(boxHash);
         }
         if (playerAndBoxesHashCells.size()-1 != boxCnt) {
-            System.out.println("Height: "+ height + " Width: " + width);
-            System.out.println(tempGoalCells.toString());
-            throw new RuntimeException("A box is not counted! HashMapSize: " + playerAndBoxesHashCells.size() + " Amount of boxes and players: " + boxCnt + 1);
+         //   System.out.println("Height: "+ height + " Width: " + width);
+         //   System.out.println(tempGoalCells.toString());
+         //   throw new RuntimeException("A box is not counted! HashMapSize: " + playerAndBoxesHashCells.size() + " Amount of boxes and players: " + boxCnt + 1);
         }
-        hashCurrentGameState();
 
         for (int i = 0; i < tempGoalCells.size(); i++) {
             goalCells[i] = tempGoalCells.get(i);
@@ -160,9 +159,6 @@ public class BoardState {
                 successful = true;
                 previousMove = new StackEntry(direction|4, previousMove);
             }
-        }
-        if(successful){
-            hashCurrentGameState();
         }
         return successful;
     }
@@ -273,7 +269,7 @@ public class BoardState {
         playerCol = newCol;
     }
 
-    private void hashCurrentGameState(){
+    public void hashCurrentGameState(){
         gameStateHash.add(new HashSet<Integer>(playerAndBoxesHashCells));
     }
 
