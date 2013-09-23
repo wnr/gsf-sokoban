@@ -60,7 +60,9 @@ public class Main {
     private static int visitedStates;
     public static String iddfs(BoardState board) {
         res = null;
-        for (int maxDepth = 1; maxDepth < 40; maxDepth++) {
+        for (int maxDepth = 1; maxDepth < 50; maxDepth++) {
+            board.clearHashTable();
+
             visitedStates = 0;
             if(debug) System.out.print("Trying depth " + maxDepth + "... ");
             boolean done = dfs(board, 0, maxDepth);
@@ -77,6 +79,8 @@ public class Main {
             return true;
         }
         if (depth == maxDepth) return false;
+      //  if (board.isPreviousGameState(depth)) return false;
+      //  board.hashCurrentGameState(depth);
         for (int dir = 0; dir < 4; dir++) {
             if ((board.movedBoxLastMove() || board.directionLastMove() != BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
                 board.performMove(dir);

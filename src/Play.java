@@ -24,7 +24,10 @@ public class Play {
             BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 
             String line;
-            while ((line = in.readLine()) != null) {
+            while((line = in.readLine()) != null) {
+                if(line.contains(";")){
+                    break;
+                }
                 lines.add(line);
             }
             BoardState board = new BoardState(lines);
@@ -104,8 +107,6 @@ public class Play {
                     }
                     if (changed) {
                         System.out.println(b);
-                        System.out.println("Been here? " + b.isPreviousGameState());
-                        b.hashCurrentGameState();
                     }
                     if (b.isBoardSolved()) {
                         System.out.println("Board solved!");
