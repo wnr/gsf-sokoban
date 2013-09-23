@@ -52,6 +52,9 @@ removeDir('temp', function(err) {
 // Classes
 //-----------------------------------------------------------------------------
 
+/**
+ * Tester
+ */
 function Tester(maps) {
   if(!Array.isArray(maps)) {
     throw new Error('Maps data required');
@@ -126,7 +129,16 @@ Tester.prototype.test = function(map, level, cb) {
     }
 
     if(result) {
-      self.passed++;
+      console.log(result);
+
+      var walker = new Walker(map);
+
+
+      if(walker.goByString(result).isSolved()) {
+	self.passed++;
+      } else {
+	self.failed++;
+      }
     }
 
     self.bar.tick();
@@ -165,12 +177,172 @@ Tester.prototype.printResults = function() {
   console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
 };
 
+/**
+ * Walker
+ */
+function Walker(map) {
+  if(map) {
+    this.map = this.parseMap(map);
+  }
+}
+
+Walker.prototype.Position = function(x, y) {
+  return {
+    x: x,
+    y: y
+  };
+};
+
+Walker.prototype.parseMap = function(map) {
+  function indexOfEither(object, searches) {
+    if(!object || typeof object.indexOf !== 'function') {
+      throw new Error('Invalid object to search in.');
+    }
+
+    for(var i = 0; i < searches.length; i++) {
+      var r = object.indexOf(searches[i]);
+      if(~r) {
+	return r;
+      }
+    }
+
+    return -1;
+  }
+
+  if(typeof map !== 'string') {
+    throw new Error('Unsupported map type.');
+  }
+
+  this.map = map.split('\n');
+
+  for(var x = 0; x < this.map.length; x++) {
+    var y = indexOfEither(this.map[x], '@+');
+
+    if(~y) {
+      this.player = new this.Position(x, y);
+    }
+  }
+
+  if(!this.player) {
+    throw new Error('Unable to find player in map.');
+  }
+};
+
+Walker.prototype.isSolved = function() {
+  for(var i = 0; i < this.map.length; i++) {
+    if(~this.map[i].indexOf('@')) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+Walker.prototype.goByString = function(string) {
+  if(string !== typeof 'string') {
+    throw new Error('Invalid arguments');
+  }
+
+  for(var i = 0; i < string.length; i++) {
+    if(string[i] === ' ') continue;
+
+    this.go(this.player, string[i]);
+  }
+
+  return this;
+};
+
+Walker.prototype.goRight = function() {
+  this.go(this.player, 'R');
+};
+
+Walker.prototype.goLeft = function() {
+  this.go(this.player, 'L');
+};
+
+Walker.prototype.goUp = function() {
+  this.go(this.player, 'U');
+};
+
+Walker.prototype.goDown = function() {
+  this.go(this.player, 'D');
+};
+
+Walker.prototype.go = function(from, dir) {
+  if(! from instanceof this.Position || !dir) {
+    throw new Error('Invalid arguments.');
+  }
+
+  var to = this.dirToPos(from, dir);
+
+  var np = this.map[to.y][to.x];
+
+  if(np === '#') {
+    throw new Error('Invalid move.');
+  }
+
+  if(np === '$' || np === '*') {
+    var to2 = this.dirToPos(to, dir);
+    this.moveBox(to, to2);
+  } else if(np === ' ') {
+    this.map[to.y][to.x] = '@';
+  } else if(np === '.') {
+    this.map[to.y][to.x] = '+';
+  } else {
+    throw new Error('Unknown error.');
+  }
+};
+
+Walker.prototype.dirToPos = function(from, dir) {
+  if(!from instanceof this.Position) {
+    throw new Error('Invalid arguments.');
+  }
+
+  var n = new this.Position(from.x, from.y);
+
+  if(dir === 'R') {
+    n.x++;
+  } else if(dir === 'L') {
+    n.x--;
+  } else if(dir === 'D') {
+    n.y++;
+  } else if(dir === 'U') {
+    n.y--;
+  } else {
+    throw new Error('Invalid direction.');
+  }
+
+  return n;
+};
+
+Walker.prototype.moveBox = function(from, to) {
+  if(!(from instanceof Walker.Position || to instanceof Walker.Position)) {
+    throw new Error('Invalid arguments.');
+  }
+
+  var np = this.map[to.y][to.x];
+
+  if(np === ' ') {
+    this.map[to.y][to.x] = '$';
+  } else if(np === '.') {
+    this.map[to.y][to.x] = '*';
+  } else {
+    throw new Error('Invalid move');
+  }
+
+  if(this.map[from.y][from.x] === '$') {
+    this.map[from.y][from.x] = ' ';
+  } else {
+    this.map[from.y][from.x] = '.';
+  }
+};
+
 //-----------------------------------------------------------------------------
 // Helper functions
 //-----------------------------------------------------------------------------
 
 function test(map, cb) {
-  execute('echo "' + map + '" | java -cp temp/out.sokoban Main > /dev/null', cb);
+  execute('echo "' + map + '" | java -cp temp/out.sokoban Main', cb);
 }
 
 function readTestData(file, limit, cb) {
