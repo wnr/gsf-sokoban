@@ -1,4 +1,4 @@
-/* jshint node: true */
+/* jshint node: true, bitwise: false */
 
 'use strict';
 
@@ -17,10 +17,12 @@ var ProgessBar = require('progress');
 //-----------------------------------------------------------------------------
 
 var config = {
-  tests: 20
+  tests: 20,
+  timeout: 10*1000
 };
 
 config.tests = process.argv[2] || config.tests;
+config.timeout = process.argv[3] || config.timeout;
 
 printHeader('Google Search First Sokoban Test');
 
@@ -37,7 +39,7 @@ removeDir('temp', function(err) {
         if(err) { throw err; }
 
         readTestData('test.data', config.tests, function(err, tests) {
-          var tester = new Tester(tests);
+          var tester = new Tester(tests, config.timeout);
           tester.run(function done() {
             tester.printResults();
             tester.printExceptions();
@@ -55,7 +57,7 @@ removeDir('temp', function(err) {
 /**
  * Tester
  */
-function Tester(maps) {
+function Tester(maps, timeout) {
   if(!Array.isArray(maps)) {
     throw new Error('Maps data required');
   }
@@ -69,6 +71,8 @@ function Tester(maps) {
   this.exceptions = [];
   this.elapsed = 0;
   this.cpus = os.cpus().length;
+  this.time = Date.now();
+  this.timeout = timeout || 0;
 
   this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
     width: (this.tests <= 100 ? this.tests : 100) + 1,
@@ -100,7 +104,7 @@ Tester.prototype.run = function(print, cb) {
 
 Tester.prototype.isDone = function() {
   if(this.executed >= this.tests) {
-    this.elapsed = new Date() - this.bar.start;
+    this.elapsed = Date.now() - this.time;
     return true;
   }
 
@@ -112,7 +116,7 @@ Tester.prototype.test = function(map, level, cb) {
 
   var self = this;
 
-  test(map, function(err, result) {
+  test(map, { timeout: this.timeout }, function(err, result) {
     self.running--;
     self.executed++;
 
@@ -122,8 +126,8 @@ Tester.prototype.test = function(map, level, cb) {
       if(err) {
         self.exceptions.push({
           test: 'Test ' + level,
-          err: err.message,
-	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+          err: err.message === 'Command failed: ' ? 'Timeout' : err.message,
+          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
         });
       }
     }
@@ -132,9 +136,9 @@ Tester.prototype.test = function(map, level, cb) {
       var walker = new Walker(map);
 
       if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
-	self.passed++;
+        self.passed++;
       } else {
-	self.failed++;
+        self.failed++;
       }
     }
 
@@ -198,8 +202,8 @@ Walker.prototype.parseMap = function(map) {
 
     for(var i = 0; i < searches.length; i++) {
       var r = object.indexOf(searches[i]);
-      if(~r) {
-	return r;
+      if(r) {
+        return r;
       }
     }
 
@@ -213,8 +217,8 @@ Walker.prototype.parseMap = function(map) {
   var m = map.split('\n').filter(function(e) {
     return e.length > 0;
   }).map(function(e) {
-    return e.split('');
-  });
+      return e.split('');
+    });
 
   for(var x = 0; x < m.length; x++) {
     var y = indexOfEither(m[x], '@+');
@@ -247,28 +251,12 @@ Walker.prototype.goByString = function(string) {
   }
 
   for(var i = 0; i < string.length; i++) {
-    if(string[i] === ' ') continue;
+    if(string[i] === ' ') { continue; }
 
     this.go(this.player, string[i]);
   }
 
   return this;
-};
-
-Walker.prototype.goRight = function() {
-  this.go(this.player, 'R');
-};
-
-Walker.prototype.goLeft = function() {
-  this.go(this.player, 'L');
-};
-
-Walker.prototype.goUp = function() {
-  this.go(this.player, 'U');
-};
-
-Walker.prototype.goDown = function() {
-  this.go(this.player, 'D');
 };
 
 Walker.prototype.go = function(from, dir) {
@@ -353,8 +341,8 @@ Walker.prototype.moveBox = function(from, to) {
 // Helper functions
 //-----------------------------------------------------------------------------
 
-function test(map, cb) {
-  execute('echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main', cb);
+function test(map, options, cb) {
+  execute('echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main', options, cb);
 }
 
 function readTestData(file, limit, cb) {
@@ -375,7 +363,7 @@ function readTestData(file, limit, cb) {
     for(var i = 0; i < result.length; i++) {
       result[i] = {
         level: i+1,
-	map: result[i].replace(/\r/g, '')
+        map: result[i].replace(/\r/g, '')
       };
     }
 
@@ -428,7 +416,7 @@ function compile(cb) {
   execute('Compiling', 'javac src/*.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
-function execute(job, cmd, cb) {
+function execute(job, cmd, options, cb) {
   if(!cmd) {
     cmd = job;
     job = null;
@@ -440,11 +428,23 @@ function execute(job, cmd, cb) {
     job = null;
   }
 
+  if(typeof cmd === 'object') {
+    cb = options;
+    options = cmd;
+    cmd = job;
+    job = null;
+  }
+
+  if(typeof options === 'function') {
+    cb = options;
+    options = null;
+  }
+
   if(job) {
     printJob(job);
   }
 
-  exec(cmd, function(err, stdout, stderr) {
+  exec(cmd, options, function(err, stdout, stderr) {
     if(err || stderr) {
       if(job) {
         printJobFailed();
