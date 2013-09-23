@@ -129,12 +129,9 @@ Tester.prototype.test = function(map, level, cb) {
     }
 
     if(result) {
-      console.log(result);
-
       var walker = new Walker(map);
 
-
-      if(walker.goByString(result).isSolved()) {
+      if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
 	self.passed++;
       } else {
 	self.failed++;
@@ -163,7 +160,7 @@ Tester.prototype.printExceptions = function() {
     printHeader('Exceptions', chalk.red);
 
     for(var i = 0; i < this.exceptions.length; i++) {
-      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + exceptions[i].cmd) */);
+      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' + chalk.yellow('Test with: ' + this.exceptions[i].cmd));
     }
   }
 
@@ -213,10 +210,14 @@ Walker.prototype.parseMap = function(map) {
     throw new Error('Unsupported map type.');
   }
 
-  this.map = map.split('\n');
+  var m = map.split('\n').filter(function(e) {
+    return e.length > 0;
+  }).map(function(e) {
+    return e.split('');
+  });
 
-  for(var x = 0; x < this.map.length; x++) {
-    var y = indexOfEither(this.map[x], '@+');
+  for(var x = 0; x < m.length; x++) {
+    var y = indexOfEither(m[x], '@+');
 
     if(~y) {
       this.player = new this.Position(x, y);
@@ -226,6 +227,8 @@ Walker.prototype.parseMap = function(map) {
   if(!this.player) {
     throw new Error('Unable to find player in map.');
   }
+
+  return m;
 };
 
 Walker.prototype.isSolved = function() {
@@ -239,7 +242,7 @@ Walker.prototype.isSolved = function() {
 };
 
 Walker.prototype.goByString = function(string) {
-  if(string !== typeof 'string') {
+  if(typeof string !== 'string') {
     throw new Error('Invalid arguments');
   }
 
@@ -269,7 +272,7 @@ Walker.prototype.goDown = function() {
 };
 
 Walker.prototype.go = function(from, dir) {
-  if(! from instanceof this.Position || !dir) {
+  if(!from || !dir) {
     throw new Error('Invalid arguments.');
   }
 
@@ -291,10 +294,19 @@ Walker.prototype.go = function(from, dir) {
   } else {
     throw new Error('Unknown error.');
   }
+
+  if(this.map[from.y][from.x] === '@') {
+    this.map[from.y][from.x] = ' ';
+  } else {
+    this.map[from.y][from.x] = '.';
+  }
+
+  this.player.x = to.x;
+  this.player.y = to.y;
 };
 
 Walker.prototype.dirToPos = function(from, dir) {
-  if(!from instanceof this.Position) {
+  if(!from) {
     throw new Error('Invalid arguments.');
   }
 
@@ -316,7 +328,7 @@ Walker.prototype.dirToPos = function(from, dir) {
 };
 
 Walker.prototype.moveBox = function(from, to) {
-  if(!(from instanceof Walker.Position || to instanceof Walker.Position)) {
+  if(!from || !to) {
     throw new Error('Invalid arguments.');
   }
 
@@ -363,7 +375,7 @@ function readTestData(file, limit, cb) {
     for(var i = 0; i < result.length; i++) {
       result[i] = {
         level: i+1,
-        map: result[i]
+	map: result[i].replace(/\r/g, '')
       };
     }
 
