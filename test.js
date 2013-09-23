@@ -168,7 +168,7 @@ Tester.prototype.printExceptions = function() {
 };
 
 Tester.prototype.printResults = function() {
-  console.log('Total:    ' + this.total);
+  console.log('Total:    ' + this.bar.total);
   console.log('Passed:   ' + chalk.green(this.passed.toString()));
   console.log('Failed:   ' + chalk.red(this.failed.toString()));
   console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
