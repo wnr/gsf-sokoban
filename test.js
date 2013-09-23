@@ -123,12 +123,12 @@ Tester.prototype.test = function(map, level, cb) {
         self.exceptions.push({
           test: 'Test ' + level,
           err: err.message,
-          cmd: 'echo "' + map + '" | java -cp temp/out.sokoban Main'
+	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
         });
       }
     }
 
-    if(result) {
+    if(result && !err) {
       var walker = new Walker(map);
 
       if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
@@ -354,7 +354,7 @@ Walker.prototype.moveBox = function(from, to) {
 //-----------------------------------------------------------------------------
 
 function test(map, cb) {
-  execute('echo "' + map + '" | java -cp temp/out.sokoban Main', cb);
+  execute('echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main', cb);
 }
 
 function readTestData(file, limit, cb) {
