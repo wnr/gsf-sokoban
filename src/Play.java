@@ -94,6 +94,7 @@ public class Play {
                         default:
                             return false;
                     }
+
                     if (move >= 0) {
                         boolean goodMove = b.isGoodMove(move);
                         changed = b.performMove(move);
@@ -101,7 +102,10 @@ public class Play {
                             System.out.println("Board now unsolvable :/");
                         }
                     }
-                    if (changed) System.out.println(b);
+                    if (changed) {
+                        System.out.println(b);
+                        System.out.println("Been here? " + b.isPreviousGameState());
+                    }
                     if (b.isBoardSolved()) {
                         System.out.println("Board solved!");
                         System.out.println("Path taken:");
@@ -109,6 +113,7 @@ public class Play {
                         System.out.println("Exiting..");
                         System.exit(0);
                     }
+
                     return true;
                 }
                 return false;
