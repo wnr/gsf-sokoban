@@ -88,20 +88,31 @@ public class Play {
                                 System.out.println(path);
                             }
                             break;
+                        case KeyEvent.VK_TAB:
+                            int[][] jumps = b.getPossibleMovePositions();
+                            System.out.print("Possible jumps:");
+                            for (int[] jump: jumps) {
+                                System.out.print(" (" + jump[0]+","+jump[1]+")");
+                            }
+                            System.out.println();
+                            break;
                         case KeyEvent.VK_ESCAPE:
                             System.exit(0);
                             break;
                         default:
                             return false;
                     }
+                    boolean goodMove = true;
                     if (move >= 0) {
-                        boolean goodMove = b.isGoodMove(move);
+                        goodMove = b.isGoodMove(move);
                         changed = b.performMove(move);
-                        if (changed && !goodMove) {
+                    }
+                    if (changed) {
+                        System.out.println(b);
+                        if (!goodMove) {
                             System.out.println("Board now unsolvable :/");
                         }
                     }
-                    if (changed) System.out.println(b);
                     if (b.isBoardSolved()) {
                         System.out.println("Board solved!");
                         System.out.println("Path taken:");

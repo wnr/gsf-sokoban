@@ -48,7 +48,7 @@ public class Main {
     }
 
     private static String res;
-    private static int visitedStates;
+    private static long visitedStates;
     public static String iddfs(BoardState board) {
         res = null;
         for (int maxDepth = 1; maxDepth < 40; maxDepth++) {
@@ -68,12 +68,37 @@ public class Main {
             return true;
         }
         if (depth == maxDepth) return false;
+
+//        if (depth == maxDepth - 1) {
+//            System.out.println(board);
+//            try {
+//                Thread.sleep(200);
+//            } catch (InterruptedException e) {
+//
+//            }
+//        }
+
+        // First try and push a box from where we stand
         for (int dir = 0; dir < 4; dir++) {
-            if ((board.movedBoxLastMove() || board.directionLastMove() != BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
+            if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                 board.performMove(dir);
                 if (dfs(board, depth + 1, maxDepth)) return true;
                 board.reverseMove();
             }
+        }
+
+        // Now try moving first and then push
+        int[][] jumps = board.getPossibleMovePositions();
+        for (int[] jump : jumps) {
+            board.performJump(jump[0], jump[1]);
+            for (int dir = 0; dir < 4; dir++) {
+                if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
+                    board.performMove(dir);
+                    if (dfs(board, depth + 1, maxDepth)) return true;
+                    board.reverseMove();
+                }
+            }
+            board.reverseMove();
         }
         return false;
     }

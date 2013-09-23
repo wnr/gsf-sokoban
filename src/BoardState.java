@@ -128,7 +128,7 @@ public class BoardState {
         } else if (isBox(newRow, newCol)) {
             int newRow2 = newRow + dr[direction];
             int newCol2 = newCol + dc[direction];
-            if (onBoard(newRow2, newCol2) && isFree(newRow2, newCol2)) {
+            if (isFree(newRow2, newCol2)) {
                 moveBox(newRow, newCol, newRow2, newCol2);
                 movePlayer(newRow, newCol);
                 successful = true;
@@ -138,8 +138,53 @@ public class BoardState {
         return successful;
     }
 
+    public int[][] getPossibleMovePositions() {
+        LinkedList<int[]> moves = new LinkedList<int[]>();
+        boolean[][] visited = new boolean[height][width];
+        getPossibleMovePositionsRec(playerRow, playerCol, visited, moves);
+        int[][] res = new int[moves.size()][];
+        int i = 0;
+        for (int[] move : moves) {
+            res[i++] = move;
+        }
+        return res;
+    }
+
+    private void getPossibleMovePositionsRec(int row, int col, boolean[][] visited, LinkedList<int[]> moves) {
+        visited[row][col] = true;
+        // Check if this is a cell from where we can move a box (and is not the current player cell)
+        if (row != playerRow || col != playerCol) {
+            for (int dir = 0; dir < 4; dir++) {
+                int newRow = row + dr[dir], newCol = col + dc[dir];
+                if (isBox(newRow, newCol)) {
+                    int newRow2 = newRow + dr[dir], newCol2 = newCol + dc[dir];
+                    if (isFree(newRow2, newCol2)) {
+                        moves.add(new int[] {row, col});
+                        break;
+                    }
+                }
+            }
+        }
+        for (int dir = 0; dir < 4; dir++) {
+            int newRow = row + dr[dir], newCol = col + dc[dir];
+            if (isFree(newRow, newCol) && !visited[newRow][newCol]) {
+                getPossibleMovePositionsRec(newRow, newCol, visited, moves);
+            }
+        }
+    }
+
     /*
-     * Determines whether the move does not create an unsolvable situation
+     * Teleports the player to the given position. No error checking done!
+     * Should only use positions given by getPossibleMovePositions()
+     */
+    public boolean performJump(int row, int col) {
+        previousMove = new StackEntry(8|playerRow<<4|playerCol<<14, previousMove);
+        movePlayer(row, col);
+        return true;
+    }
+
+    /*
+     * Determines if the move does not create an unsolvable situation
      */
     public boolean isGoodMove(int direction) {
         int newRow = playerRow + dr[direction];
@@ -177,17 +222,32 @@ public class BoardState {
         return !unmatchedBox;
     }
 
+    /*
+     * previousMove has the following format (bits 0-indexed:
+     * Bits 0 and 1 together contain the direction of the move
+     * Bit 2 decides whether a board was pushed by the move or not
+     * If bit 3 is set, the move was a jump, and bits 0-2 can be ignored.
+     * Bits 4-13 together determine the row that the jump was made from.
+     * Bits 14-23 together determine the column that the jump was made from.
+     */
     public boolean reverseMove() {
         if (previousMove == null) return false;
-        boolean movedBox = (previousMove.val & 4) != 0;
-        int dir = previousMove.val&3;
-        int oppositeDir = getOppositeDirection(dir);
-        int r1 = playerRow, c1 = playerCol;
-        int r0 = r1 + dr[oppositeDir], c0 = c1 + dc[oppositeDir];
-        movePlayer(r0, c0);
-        if (movedBox) {
-            int r2 = r1 + dr[dir], c2 = c1 + dc[dir];
-            moveBox(r2, c2, r1, c1);
+        if ((previousMove.val&8) != 0) {
+            // Move was jump
+            int r = previousMove.val>>4&((1<<10)-1);
+            int c = previousMove.val>>14;
+            movePlayer(r, c);
+        } else {
+            boolean movedBox = (previousMove.val & 4) != 0;
+            int dir = previousMove.val&3;
+            int oppositeDir = getOppositeDirection(dir);
+            int r1 = playerRow, c1 = playerCol;
+            int r0 = r1 + dr[oppositeDir], c0 = c1 + dc[oppositeDir];
+            movePlayer(r0, c0);
+            if (movedBox) {
+                int r2 = r1 + dr[dir], c2 = c1 + dc[dir];
+                moveBox(r2, c2, r1, c1);
+            }
         }
         previousMove = previousMove.prev;
         return true;
@@ -209,7 +269,44 @@ public class BoardState {
     public String backtrackPath() {
         StringBuilder sb = new StringBuilder();
         while (previousMove != null) {
-            sb.append(directionCharacters[previousMove.val&3]);
+            if ((previousMove.val&8) != 0) {
+                // Move was jump
+                // Have to search for path
+                int startRow = previousMove.val>>4&((1<<10)-1);
+                int startCol = previousMove.val>>14;
+                int[][] prev = new int[height][width];
+                for (int i = 0; i < height; i++) {
+                    Arrays.fill(prev[i], -2);
+                }
+                LinkedList<int[]> q = new LinkedList<int[]>();
+                q.add(new int[] {startRow, startCol});
+                prev[startRow][startCol] = -1;
+                while (!q.isEmpty()) {
+                    int[] state = q.removeFirst();
+                    int row = state[0], col = state[1];
+                    if (row == playerRow && col == playerCol) {
+                        int r = playerRow, c = playerCol;
+                        while (prev[r][c] != -1) {
+                            int dir = prev[r][c];
+                            sb.append(directionCharacters[dir]);
+                            int oppDir = getOppositeDirection(dir);
+                            r += dr[oppDir];
+                            c += dc[oppDir];
+                        }
+                        break;
+                    }
+                    for (int dir = 0; dir < 4; dir++) {
+                        int newRow = row + dr[dir];
+                        int newCol = col + dc[dir];
+                        if (isFree(newRow, newCol) && prev[newRow][newCol] == -2) {
+                            prev[newRow][newCol] = dir;
+                            q.add(new int[] {newRow, newCol});
+                        }
+                    }
+                }
+            } else {
+                sb.append(directionCharacters[previousMove.val&3]);
+            }
             reverseMove();
         }
         return sb.reverse().toString();
@@ -253,6 +350,10 @@ public class BoardState {
         return (board[row][col] & BOX) != 0;
     }
 
+    public boolean isBoxInDirection(int direction) {
+        return isBox(playerRow + dr[direction], playerCol + dc[direction]);
+    }
+
     public boolean isPlayer(int row, int col) {
         return (board[row][col] & PLAYER) != 0;
     }
@@ -261,6 +362,7 @@ public class BoardState {
         return (board[row][col] & NOT_FREE) == 0;
     }
 
+    // TODO this should be updated while moving
     public boolean isBoardSolved(){
         for(int[] goal: goalCells){
             if(!(board[goal[0]][goal[1]] == BOX_ON_GOAL)){
