@@ -73,8 +73,8 @@ function Tester(maps) {
   this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
     width: (this.tests <= 100 ? this.tests : 100) + 1,
     total: this.tests,
-    complete: '●',
-    incomplete: '◦'
+    complete: '>',
+    incomplete: '='
   });
 }
 
