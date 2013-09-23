@@ -1,4 +1,4 @@
-/* jshint node: true */
+/* jshint node: true, bitwise: false */
 
 'use strict';
 
@@ -17,10 +17,12 @@ var ProgessBar = require('progress');
 //-----------------------------------------------------------------------------
 
 var config = {
-  tests: 20
+  tests: 20,
+  timeout: 10*1000
 };
 
 config.tests = process.argv[2] || config.tests;
+config.timeout = process.argv[3] || config.timeout;
 
 printHeader('Google Search First Sokoban Test');
 
@@ -37,7 +39,7 @@ removeDir('temp', function(err) {
         if(err) { throw err; }
 
         readTestData('test.data', config.tests, function(err, tests) {
-          var tester = new Tester(tests);
+          var tester = new Tester(tests, config.timeout);
           tester.run(function done() {
             tester.printResults();
             tester.printExceptions();
@@ -52,7 +54,10 @@ removeDir('temp', function(err) {
 // Classes
 //-----------------------------------------------------------------------------
 
-function Tester(maps) {
+/**
+ * Tester
+ */
+function Tester(maps, timeout) {
   if(!Array.isArray(maps)) {
     throw new Error('Maps data required');
   }
@@ -66,12 +71,14 @@ function Tester(maps) {
   this.exceptions = [];
   this.elapsed = 0;
   this.cpus = os.cpus().length;
+  this.time = Date.now();
+  this.timeout = timeout || 0;
 
   this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
     width: (this.tests <= 100 ? this.tests : 100) + 1,
     total: this.tests,
-    complete: '●',
-    incomplete: '◦'
+    complete: '>',
+    incomplete: '='
   });
 }
 
@@ -97,7 +104,7 @@ Tester.prototype.run = function(print, cb) {
 
 Tester.prototype.isDone = function() {
   if(this.executed >= this.tests) {
-    this.elapsed = new Date() - this.bar.start;
+    this.elapsed = Date.now() - this.time;
     return true;
   }
 
@@ -109,7 +116,7 @@ Tester.prototype.test = function(map, level, cb) {
 
   var self = this;
 
-  test(map, function(err, result) {
+  test(map, { timeout: this.timeout }, function(err, result) {
     self.running--;
     self.executed++;
 
@@ -119,14 +126,20 @@ Tester.prototype.test = function(map, level, cb) {
       if(err) {
         self.exceptions.push({
           test: 'Test ' + level,
-          err: err.message,
-          cmd: 'echo "' + map + '" | java -cp temp/out.sokoban Main'
+          err: err.message === 'Command failed: ' ? 'Timeout' : err.message,
+          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
         });
       }
     }
 
-    if(result) {
-      self.passed++;
+    if(result && !err) {
+      var walker = new Walker(map);
+
+      if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
+        self.passed++;
+      } else {
+        self.failed++;
+      }
     }
 
     self.bar.tick();
@@ -151,7 +164,7 @@ Tester.prototype.printExceptions = function() {
     printHeader('Exceptions', chalk.red);
 
     for(var i = 0; i < this.exceptions.length; i++) {
-      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + exceptions[i].cmd) */);
+      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' + chalk.yellow('Test with: ' + this.exceptions[i].cmd));
     }
   }
 
@@ -159,18 +172,177 @@ Tester.prototype.printExceptions = function() {
 };
 
 Tester.prototype.printResults = function() {
-  console.log('Total:    ' + this.total);
+  console.log('Total:    ' + this.bar.total);
   console.log('Passed:   ' + chalk.green(this.passed.toString()));
   console.log('Failed:   ' + chalk.red(this.failed.toString()));
   console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
+};
+
+/**
+ * Walker
+ */
+function Walker(map) {
+  if(map) {
+    this.map = this.parseMap(map);
+  }
+}
+
+Walker.prototype.Position = function(x, y) {
+  return {
+    x: x,
+    y: y
+  };
+};
+
+Walker.prototype.parseMap = function(map) {
+  function indexOfEither(object, searches) {
+    if(!object || typeof object.indexOf !== 'function') {
+      throw new Error('Invalid object to search in.');
+    }
+
+    for(var i = 0; i < searches.length; i++) {
+      var r = object.indexOf(searches[i]);
+      if(r) {
+        return r;
+      }
+    }
+
+    return -1;
+  }
+
+  if(typeof map !== 'string') {
+    throw new Error('Unsupported map type.');
+  }
+
+  var m = map.split('\n').filter(function(e) {
+    return e.length > 0;
+  }).map(function(e) {
+      return e.split('');
+    });
+
+  for(var x = 0; x < m.length; x++) {
+    var y = indexOfEither(m[x], '@+');
+
+    if(~y) {
+      this.player = new this.Position(x, y);
+    }
+  }
+
+  if(!this.player) {
+    throw new Error('Unable to find player in map.');
+  }
+
+  return m;
+};
+
+Walker.prototype.isSolved = function() {
+  for(var i = 0; i < this.map.length; i++) {
+    if(~this.map[i].indexOf('@')) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+Walker.prototype.goByString = function(string) {
+  if(typeof string !== 'string') {
+    throw new Error('Invalid arguments');
+  }
+
+  for(var i = 0; i < string.length; i++) {
+    if(string[i] === ' ') { continue; }
+
+    this.go(this.player, string[i]);
+  }
+
+  return this;
+};
+
+Walker.prototype.go = function(from, dir) {
+  if(!from || !dir) {
+    throw new Error('Invalid arguments.');
+  }
+
+  var to = this.dirToPos(from, dir);
+
+  var np = this.map[to.y][to.x];
+
+  if(np === '#') {
+    throw new Error('Invalid move.');
+  }
+
+  if(np === '$' || np === '*') {
+    var to2 = this.dirToPos(to, dir);
+    this.moveBox(to, to2);
+  } else if(np === ' ') {
+    this.map[to.y][to.x] = '@';
+  } else if(np === '.') {
+    this.map[to.y][to.x] = '+';
+  } else {
+    throw new Error('Unknown error.');
+  }
+
+  if(this.map[from.y][from.x] === '@') {
+    this.map[from.y][from.x] = ' ';
+  } else {
+    this.map[from.y][from.x] = '.';
+  }
+
+  this.player.x = to.x;
+  this.player.y = to.y;
+};
+
+Walker.prototype.dirToPos = function(from, dir) {
+  if(!from) {
+    throw new Error('Invalid arguments.');
+  }
+
+  var n = new this.Position(from.x, from.y);
+
+  if(dir === 'R') {
+    n.x++;
+  } else if(dir === 'L') {
+    n.x--;
+  } else if(dir === 'D') {
+    n.y++;
+  } else if(dir === 'U') {
+    n.y--;
+  } else {
+    throw new Error('Invalid direction.');
+  }
+
+  return n;
+};
+
+Walker.prototype.moveBox = function(from, to) {
+  if(!from || !to) {
+    throw new Error('Invalid arguments.');
+  }
+
+  var np = this.map[to.y][to.x];
+
+  if(np === ' ') {
+    this.map[to.y][to.x] = '$';
+  } else if(np === '.') {
+    this.map[to.y][to.x] = '*';
+  } else {
+    throw new Error('Invalid move');
+  }
+
+  if(this.map[from.y][from.x] === '$') {
+    this.map[from.y][from.x] = ' ';
+  } else {
+    this.map[from.y][from.x] = '.';
+  }
 };
 
 //-----------------------------------------------------------------------------
 // Helper functions
 //-----------------------------------------------------------------------------
 
-function test(map, cb) {
-  execute('echo "' + map + '" | java -cp temp/out.sokoban Main > /dev/null', cb);
+function test(map, options, cb) {
+  execute('echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main', options, cb);
 }
 
 function readTestData(file, limit, cb) {
@@ -191,7 +363,7 @@ function readTestData(file, limit, cb) {
     for(var i = 0; i < result.length; i++) {
       result[i] = {
         level: i+1,
-        map: result[i]
+        map: result[i].replace(/\r/g, '')
       };
     }
 
@@ -244,7 +416,7 @@ function compile(cb) {
   execute('Compiling', 'javac src/*.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
-function execute(job, cmd, cb) {
+function execute(job, cmd, options, cb) {
   if(!cmd) {
     cmd = job;
     job = null;
@@ -256,11 +428,23 @@ function execute(job, cmd, cb) {
     job = null;
   }
 
+  if(typeof cmd === 'object') {
+    cb = options;
+    options = cmd;
+    cmd = job;
+    job = null;
+  }
+
+  if(typeof options === 'function') {
+    cb = options;
+    options = null;
+  }
+
   if(job) {
     printJob(job);
   }
 
-  exec(cmd, function(err, stdout, stderr) {
+  exec(cmd, options, function(err, stdout, stderr) {
     if(err || stderr) {
       if(job) {
         printJobFailed();

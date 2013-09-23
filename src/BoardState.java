@@ -2,6 +2,8 @@ import java.util.*;
 
 public class BoardState {
 
+    public static final int PRIME = 83;
+
     public static final char FREE_SPACE_CHAR = ' ';
     public static final char GOAL_CHAR = '.';
     public static final char WALL_CHAR = '#';
@@ -45,11 +47,19 @@ public class BoardState {
     private int                      width, height;
     private int                      playerRow, playerCol;
     public  int                      goalCnt, boxCnt;
+
     private StackEntry               previousMove;
     public  int                      playerCnt;
     private int[][]                  board;
     private int[][]                  goalCells;
     private boolean[][]              trappingCells;
+
+    private Set<Integer>              playerAndBoxesHashCells;
+    private Set<Integer>               tempTest;
+    private Map<Set, Integer>              gameStateHash;
+
+    private int[][]                   playerPosValues;
+    private int[][]                   boxPosValues;
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -58,11 +68,16 @@ public class BoardState {
             width = Math.max(width, line.length());
         }
         board = new int[height][width];
+        playerPosValues = new int[height][width];
+        boxPosValues = new int[height][width];
         int row = 0;
         List<int[]> tempGoalCells = new ArrayList<int[]>();
+        List<Integer> tempBoxList = new ArrayList<Integer>();
         for (String line : lines) {
             int col = 0;
             for (char cell : line.toCharArray()) {
+                playerPosValues[row][col] = col +row*width;
+                boxPosValues[row][col] = height*width + col + row*width;
                 board[row][col] = characterMapping.get(cell);
                 if (isPlayer(row, col)) {
                     playerCnt++;
@@ -74,6 +89,8 @@ public class BoardState {
                     goalCnt++;
                 }
                 if (isBox(row, col)) {
+                    tempBoxList.add(row);
+                    tempBoxList.add(col);
                     boxCnt++;
                 }
                 col++;
@@ -81,6 +98,25 @@ public class BoardState {
             row++;
         }
         goalCells = new int[tempGoalCells.size()][];
+
+        gameStateHash = new HashMap<Set, Integer>();
+        playerAndBoxesHashCells = new HashSet<Integer>();
+        hashNewPosition(0,0,playerRow,playerCol, false);
+        //playerAndBoxesHashCells.add(generateHashVectorOfTwo(new int[]{ playerRow, playerCol }, false));
+
+        for (int i = 0; i < boxCnt; i++) {
+            int boxRow = tempBoxList.get(i * 2);
+            int boxCol = tempBoxList.get(i * 2 + 1);
+           // int boxHash = generateHashVectorOfTwo(new int[]{ boxRow, boxCol }, true);
+            hashNewPosition(0,0,boxRow,boxCol, true);
+            //playerAndBoxesHashCells.add(boxHash);
+        }
+        if (playerAndBoxesHashCells.size()-1 != boxCnt) {
+         //   System.out.println("Height: "+ height + " Width: " + width);
+         //   System.out.println(tempGoalCells.toString());
+         //   throw new RuntimeException("A box is not counted! HashMapSize: " + playerAndBoxesHashCells.size() + " Amount of boxes and players: " + boxCnt + 1);
+        }
+        tempTest = new HashSet<Integer>(playerAndBoxesHashCells);
 
         for (int i = 0; i < tempGoalCells.size(); i++) {
             goalCells[i] = tempGoalCells.get(i);
@@ -312,12 +348,37 @@ public class BoardState {
         return sb.reverse().toString();
     }
 
+    public String temp(){
+        StringBuilder sb = new StringBuilder();
+        StackEntry tempVar = previousMove;
+        while (tempVar != null) {
+            sb.append(directionCharacters[tempVar.val&3]);
+            tempVar = tempVar.prev;
+        }
+        return sb.reverse().toString();
+    }
+
     /*
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
         board[oldRow][oldCol] &= ~BOX;
         board[newRow][newCol] |= BOX;
+      //  hashNewPosition(oldRow, oldCol, newRow, newCol, true);
+    }
+
+    private void hashNewPosition(int oldRow, int oldCol, int newRow, int newCol, boolean isBox){
+        //int boxOldHash = generateHashVectorOfTwo(new int[]{oldRow, oldCol}, isBox);
+        //int boxIndex = boxesIndex.get(boxOldHash);
+        //int boxNewHash = generateHashVectorOfTwo(new int[]{newRow, newCol}, isBox);
+        //boxesIndex.put(boxNewHash, boxIndex);
+        if(isBox){
+            playerAndBoxesHashCells.remove(boxPosValues[oldRow][oldCol]);
+            playerAndBoxesHashCells.add(boxPosValues[newRow][newCol]);
+        }else {
+            playerAndBoxesHashCells.remove(playerPosValues[oldRow][oldCol]);
+            playerAndBoxesHashCells.add(playerPosValues[newRow][newCol]);
+        }
     }
 
     /*
@@ -326,8 +387,34 @@ public class BoardState {
     private void movePlayer(int newRow, int newCol) {
         board[playerRow][playerCol] &= ~PLAYER;
         board[newRow][newCol] |= PLAYER;
+
+     //   hashNewPosition(playerRow, playerCol, newRow, newCol, false);
+
         playerRow = newRow;
         playerCol = newCol;
+    }
+
+    public void hashCurrentGameState(int depth){
+       // gameStateHash.put(new HashSet<Integer>(playerAndBoxesHashCells), depth);
+       // gameStateHash.put(playerAndBoxesHashCells, depth);
+    }
+
+    public void clearHashTable(){
+        gameStateHash.clear();
+        playerAndBoxesHashCells = new HashSet<Integer>(tempTest);
+
+    }
+
+    public boolean isPreviousGameState(int currentDepth){
+        Integer oldDepth = gameStateHash.get(playerAndBoxesHashCells);
+        if(oldDepth == null){
+            return false;
+        }else if(oldDepth > currentDepth){
+            hashCurrentGameState(currentDepth);
+            return false;
+        }else{
+            return true;
+        }
     }
 
     public static int getOppositeDirection(int direction) {
@@ -419,5 +506,12 @@ public class BoardState {
             sb.append('\n');
         }
         return sb.toString();
+    }
+
+    private int generateHashVectorOfTwo(int[] vector, boolean small){
+        if(small)
+            return vector[0] + PRIME*vector[1];
+        else
+            return vector[0]*PRIME + PRIME*PRIME*vector[1];
     }
 }

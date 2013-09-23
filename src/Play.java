@@ -24,7 +24,10 @@ public class Play {
             BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 
             String line;
-            while ((line = in.readLine()) != null) {
+            while((line = in.readLine()) != null) {
+                if(line.contains(";")){
+                    break;
+                }
                 lines.add(line);
             }
             BoardState board = new BoardState(lines);
@@ -102,6 +105,7 @@ public class Play {
                         default:
                             return false;
                     }
+
                     boolean goodMove = true;
                     if (move >= 0) {
                         goodMove = b.isGoodMove(move);
@@ -120,6 +124,7 @@ public class Play {
                         System.out.println("Exiting..");
                         System.exit(0);
                     }
+
                     return true;
                 }
                 return false;
