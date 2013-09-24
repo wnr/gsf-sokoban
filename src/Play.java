@@ -110,6 +110,9 @@ public class Play {
                     if (move >= 0) {
                         goodMove = b.isGoodMove(move);
                         changed = b.performMove(move);
+                        if(b.movedBoxLastMove()){
+                            System.out.println("Moved box number: " + b.getBoxIndexInDirection(b.directionLastMove()));
+                        }
                     }
                     if (changed) {
                         System.out.println(b);

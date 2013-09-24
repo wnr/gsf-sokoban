@@ -17,17 +17,18 @@ public class BoardState {
     public static final int DOWN = 2;
     public static final int LEFT = 3;
 
-    private static final int FREE_SPACE = 0;
-    private static final int WALL = 1;
-    private static final int GOAL = 2;
-    private static final int PLAYER = 4;
-    private static final int BOX = 8;
+    private static final int FREE_SPACE     = 0;
+    private static final int WALL           = 1;
+    private static final int GOAL           = 2;
+    private static final int PLAYER         = 4;
+    private static final int BOX            = 8;
     private static final int PLAYER_ON_GOAL = PLAYER | GOAL;
-    private static final int BOX_ON_GOAL = BOX | GOAL;
-    private static final int NOT_FREE = WALL | BOX;
+    private static final int BOX_ON_GOAL    = BOX | GOAL;
+    private static final int NOT_FREE       = WALL | BOX;
 
-    private char[] boardCharacters = {FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR};
+    private char[] boardCharacters = { FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR };
     private static HashMap<Character, Integer> characterMapping;
+
     static {
         characterMapping = new HashMap<Character, Integer>();
         characterMapping.put(FREE_SPACE_CHAR, FREE_SPACE);
@@ -40,11 +41,11 @@ public class BoardState {
     }
 
     // Vectors corresponding to the moves {up, right, down, left}
-    private static int[] dr = {-1, 0, 1, 0};
-    private static int[] dc = {0, 1, 0, -1};
-    private static char[] directionCharacters = {'U', 'R', 'D', 'L'};
+    private static int[]  dr                  = { -1, 0, 1, 0 };
+    private static int[]  dc                  = { 0, 1, 0, -1 };
+    private static char[] directionCharacters = { 'U', 'R', 'D', 'L' };
 
-    private int                      width, height;
+    private int width, height;
     private int                      playerRow, playerCol;
     public  int                      goalCnt, boxCnt;
 
@@ -83,6 +84,7 @@ public class BoardState {
                     goalCnt++;
                 }
                 if (isBox(row, col)) {
+                    board[row][col] |= boxCnt<<4;
                     tempBoxList.add(row);
                     tempBoxList.add(col);
                     boxCnt++;
@@ -357,6 +359,8 @@ public class BoardState {
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
         board[oldRow][oldCol] &= ~BOX;
         board[newRow][newCol] |= BOX;
+        board[newRow][newCol] |= -16 & board[oldRow][oldCol];
+        board[oldRow][oldCol] &= 15;
         if(Main.useGameStateHash){
             hashNewPosition(oldRow, oldCol, newRow, newCol, true);
         }
@@ -436,6 +440,10 @@ public class BoardState {
         return isBox(playerRow + dr[direction], playerCol + dc[direction]);
     }
 
+    public int getBoxIndexInDirection(int direction){
+        return getBoxNumber(playerRow + dr[direction], playerCol + dc[direction]);
+    }
+
     public boolean isPlayer(int row, int col) {
         return (board[row][col] & PLAYER) != 0;
     }
@@ -470,7 +478,7 @@ public class BoardState {
         StringBuilder sb = new StringBuilder();
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
-                sb.append(boardCharacters[board[row][col]]);
+                sb.append(boardCharacters[board[row][col] & 15]);
             }
             sb.append('\n');
         }
@@ -491,7 +499,7 @@ public class BoardState {
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
                 if(isWall(row,col)){
-                    sb.append(boardCharacters[board[row][col]]);
+                    sb.append(boardCharacters[board[row][col] & 15]);
                 }else if(isTrappingCell(row, col)){
                     sb.append('x');
                 }else{
@@ -508,5 +516,17 @@ public class BoardState {
             return vector[0] + PRIME*vector[1];
         else
             return vector[0]*PRIME + PRIME*PRIME*vector[1];
+    }
+
+    public int getBoxNumber(int row, int col){
+        return board[row][col] >> 4;
+    }
+
+    public int getPlayerCol() {
+        return playerCol;
+    }
+
+    public int getPlayerRow() {
+        return playerRow;
     }
 }
