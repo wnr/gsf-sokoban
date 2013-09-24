@@ -21,8 +21,8 @@ var config = {
   timeout: 10*1000
 };
 
-config.tests = process.argv[2] || config.tests;
-config.timeout = process.argv[3] || config.timeout;
+config.tests = process.argv[2] || config.tests; //TODO: Fix so that if nothing is inputted, the default should be all tests.
+config.timeout = process.argv[3] || config.timeout;
 
 printHeader('Google Search First Sokoban Test');
 
@@ -116,7 +116,7 @@ Tester.prototype.test = function(map, level, cb) {
 
   var self = this;
 
-  test(map, { timeout: this.timeout }, function(err, result) {
+  test(map, this.timeout, function(err, result) {
     self.running--;
     self.executed++;
 
@@ -135,10 +135,19 @@ Tester.prototype.test = function(map, level, cb) {
     if(result && !err) {
       var walker = new Walker(map);
 
-      if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
-        self.passed++;
-      } else {
+      try {
+	if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
+	  self.passed++;
+	} else {
+	  self.failed++;
+	}
+      } catch(e) {
         self.failed++;
+	self.exceptions.push({
+	  test: 'Test ' + level,
+	  err: 'Result: ' + result + '\nExceptio:' + e,
+	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+	});
       }
     }
 
@@ -341,10 +350,6 @@ Walker.prototype.moveBox = function(from, to) {
 // Helper functions
 //-----------------------------------------------------------------------------
 
-function test(map, options, cb) {
-  execute('echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main', options, cb);
-}
-
 function readTestData(file, limit, cb) {
   if(!cb) {
     throw new Error('Callback required.');
@@ -416,7 +421,12 @@ function compile(cb) {
   execute('Compiling', 'javac src/*.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
-function execute(job, cmd, options, cb) {
+function test(map, timeout, cb) {
+  var child = execute('java -cp temp/out.sokoban Main', timeout, cb);
+  child.stdin.write(map.replace(/^\n/, '') + ';\n');
+}
+
+function execute(job, cmd, timeout, cb) {
   if(!cmd) {
     cmd = job;
     job = null;
@@ -428,23 +438,27 @@ function execute(job, cmd, options, cb) {
     job = null;
   }
 
-  if(typeof cmd === 'object') {
-    cb = options;
-    options = cmd;
+  if(typeof cmd === 'number') {
+    cb = timeout;
+    timeout = cmd;
     cmd = job;
     job = null;
   }
 
-  if(typeof options === 'function') {
-    cb = options;
-    options = null;
+  if(typeof timeout === 'function') {
+    cb = timeout;
+    timeout = null;
   }
 
   if(job) {
     printJob(job);
   }
 
-  exec(cmd, options, function(err, stdout, stderr) {
+  if(!timeout) {
+    timeout = 0;
+  }
+
+  var child = exec(cmd, {timeout: timeout}, function(err, stdout, stderr) {
     if(err || stderr) {
       if(job) {
         printJobFailed();
@@ -466,4 +480,6 @@ function execute(job, cmd, options, cb) {
       cb(null, stdout);
     }
   });
+
+  return child;
 }
