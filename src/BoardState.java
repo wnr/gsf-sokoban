@@ -2,20 +2,18 @@ import java.util.*;
 
 public class BoardState {
 
-    public static final int PRIME = 83;
-
-    public static final char FREE_SPACE_CHAR = ' ';
-    public static final char GOAL_CHAR = '.';
-    public static final char WALL_CHAR = '#';
-    public static final char PLAYER_CHAR = '@';
+    public static final char FREE_SPACE_CHAR     = ' ';
+    public static final char GOAL_CHAR           = '.';
+    public static final char WALL_CHAR           = '#';
+    public static final char PLAYER_CHAR         = '@';
     public static final char PLAYER_ON_GOAL_CHAR = '+';
-    public static final char BOX_CHAR = '$';
-    public static final char BOX_ON_GOAL_CHAR = '*';
+    public static final char BOX_CHAR            = '$';
+    public static final char BOX_ON_GOAL_CHAR    = '*';
 
-    public static final int UP = 0;
+    public static final int UP    = 0;
     public static final int RIGHT = 1;
-    public static final int DOWN = 2;
-    public static final int LEFT = 3;
+    public static final int DOWN  = 2;
+    public static final int LEFT  = 3;
 
     private static final int FREE_SPACE     = 0;
     private static final int WALL           = 1;
@@ -46,19 +44,18 @@ public class BoardState {
     private static char[] directionCharacters = { 'U', 'R', 'D', 'L' };
 
     private int width, height;
-    private int                      playerRow, playerCol;
-    public  int                      goalCnt, boxCnt;
+    private int playerRow, playerCol;
+    public int goalCnt, boxCnt;
 
-    private StackEntry               previousMove;
-    public  int                      playerCnt;
-    private int[][]                  board;
-    private int[][]                  goalCells;
-    private boolean[][]              trappingCells;
+    private StackEntry  previousMove;
+    public  int         playerCnt;
+    private int[][]     board;
+    private int[][]     goalCells;
+    private boolean[][] trappingCells;
 
-    private Set<Integer>              playerAndBoxesHashCells;
-    private int[]                     playerAndBoxesHashCellsSimple;
-    private Set<Integer>               tempTest;
-    private Map<Object, Integer>              gameStateHash;
+    private Set<Integer>         playerAndBoxesHashCells;
+    private Map<Object, Integer> gameStateHash;
+
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -69,7 +66,7 @@ public class BoardState {
         board = new int[height][width];
         int row = 0;
         List<int[]> tempGoalCells = new ArrayList<int[]>();
-        List<Integer> tempBoxList = new ArrayList<Integer>();
+        List<int[]> tempBoxList = new ArrayList<int[]>();
         for (String line : lines) {
             int col = 0;
             for (char cell : line.toCharArray()) {
@@ -80,13 +77,12 @@ public class BoardState {
                     playerCol = col;
                 }
                 if (isGoal(row, col)) {
-                    tempGoalCells.add(new int[] {row, col});
+                    tempGoalCells.add(new int[]{ row, col });
                     goalCnt++;
                 }
                 if (isBox(row, col)) {
-                    board[row][col] |= boxCnt<<4;
-                    tempBoxList.add(row);
-                    tempBoxList.add(col);
+                    board[row][col] |= boxCnt << 4;
+                    tempBoxList.add(new int[]{ row, col });
                     boxCnt++;
                 }
                 col++;
@@ -95,22 +91,16 @@ public class BoardState {
         }
         goalCells = new int[tempGoalCells.size()][];
 
-        if(Main.useGameStateHash){
+        if (Main.useGameStateHash) {
 
             gameStateHash = new HashMap<Object, Integer>();
-            if(Main.useSimpleHash){
-                playerAndBoxesHashCellsSimple = new int[boxCnt+1];
-            }else{
-                playerAndBoxesHashCells = new HashSet<Integer>();
-            }
-            hashNewPosition(0, 0, playerRow, playerCol, false);
-
+            playerAndBoxesHashCells = new HashSet<Integer>();
+            hashNewPosition(playerRow, playerCol, playerRow, playerCol, false);
             for (int i = 0; i < boxCnt; i++) {
-                int boxRow = tempBoxList.get(i * 2);
-                int boxCol = tempBoxList.get(i * 2 + 1);
-                hashNewPosition(0,0,boxRow,boxCol, true);
+                int boxRow = tempBoxList.get(i)[0];
+                int boxCol = tempBoxList.get(i)[1];
+                hashNewPosition(boxRow, boxCol, boxRow, boxCol, true);
             }
-            tempTest = new HashSet<Integer>(playerAndBoxesHashCells);
         }
 
         for (int i = 0; i < tempGoalCells.size(); i++) {
@@ -139,12 +129,12 @@ public class BoardState {
             for (int i = 0; i < 4; i++) {
                 newRow = row + dr[i];
                 newCol = col + dc[i];
-                if (trappingCells[newRow][newCol] && !isWall(newRow, newCol)){
+                if (trappingCells[newRow][newCol] && !isWall(newRow, newCol)) {
                     traverseTrappingCells(newRow, newCol, i);
                 }
             }
         }
-     }
+    }
 
     public boolean performMove(int direction) {
         int newRow = playerRow + dr[direction];
@@ -156,14 +146,15 @@ public class BoardState {
             movePlayer(newRow, newCol);
             successful = true;
             previousMove = new StackEntry(direction, previousMove);
-        } else if (isBox(newRow, newCol)) {
+        }
+        else if (isBox(newRow, newCol)) {
             int newRow2 = newRow + dr[direction];
             int newCol2 = newCol + dc[direction];
             if (isFree(newRow2, newCol2)) {
                 moveBox(newRow, newCol, newRow2, newCol2);
                 movePlayer(newRow, newCol);
                 successful = true;
-                previousMove = new StackEntry(direction|4, previousMove);
+                previousMove = new StackEntry(direction | 4, previousMove);
             }
         }
         return successful;
@@ -190,7 +181,7 @@ public class BoardState {
                 if (isBox(newRow, newCol)) {
                     int newRow2 = newRow + dr[dir], newCol2 = newCol + dc[dir];
                     if (isFree(newRow2, newCol2)) {
-                        moves.add(new int[] {row, col});
+                        moves.add(new int[]{ row, col });
                         break;
                     }
                 }
@@ -209,7 +200,7 @@ public class BoardState {
      * Should only use positions given by getPossibleMovePositions()
      */
     public boolean performJump(int row, int col) {
-        previousMove = new StackEntry(8|playerRow<<4|playerCol<<14, previousMove);
+        previousMove = new StackEntry(8 | playerRow << 4 | playerCol << 14, previousMove);
         movePlayer(row, col);
         return true;
     }
@@ -220,7 +211,7 @@ public class BoardState {
     public boolean isGoodMove(int direction) {
         int newRow = playerRow + dr[direction];
         int newCol = playerCol + dc[direction];
-        if (isFree(newRow, newCol)) return true;
+        if (isFree(newRow, newCol)) { return true; }
         boolean good = false;
         if (isBox(newRow, newCol)) {
             int newRow2 = newRow + dr[direction];
@@ -229,9 +220,9 @@ public class BoardState {
                 good = true;
                 moveBox(newRow, newCol, newRow2, newCol2);
                 good &= checkIfValidBox(newRow2 - 1, newCol2 - 1);
-                good &= checkIfValidBox(newRow2 - 1, newCol2    );
-                good &= checkIfValidBox(newRow2    , newCol2 - 1);
-                good &= checkIfValidBox(newRow2    , newCol2    );
+                good &= checkIfValidBox(newRow2 - 1, newCol2);
+                good &= checkIfValidBox(newRow2, newCol2 - 1);
+                good &= checkIfValidBox(newRow2, newCol2);
                 moveBox(newRow2, newCol2, newRow, newCol);
             }
         }
@@ -262,15 +253,16 @@ public class BoardState {
      * Bits 14-23 together determine the column that the jump was made from.
      */
     public boolean reverseMove() {
-        if (previousMove == null) return false;
-        if ((previousMove.val&8) != 0) {
+        if (previousMove == null) { return false; }
+        if ((previousMove.val & 8) != 0) {
             // Move was jump
-            int r = previousMove.val>>4&((1<<10)-1);
-            int c = previousMove.val>>14;
+            int r = previousMove.val >> 4 & ((1 << 10) - 1);
+            int c = previousMove.val >> 14;
             movePlayer(r, c);
-        } else {
+        }
+        else {
             boolean movedBox = (previousMove.val & 4) != 0;
-            int dir = previousMove.val&3;
+            int dir = previousMove.val & 3;
             int oppositeDir = getOppositeDirection(dir);
             int r1 = playerRow, c1 = playerCol;
             int r0 = r1 + dr[oppositeDir], c0 = c1 + dc[oppositeDir];
@@ -285,12 +277,12 @@ public class BoardState {
     }
 
     public int directionLastMove() {
-        if (previousMove == null) return -1;
-        return previousMove.val&3;
+        if (previousMove == null) { return -1; }
+        return previousMove.val & 3;
     }
 
     public boolean movedBoxLastMove() {
-        if (previousMove == null) return false;
+        if (previousMove == null) { return false; }
         return (previousMove.val & 4) != 0;
     }
 
@@ -300,17 +292,17 @@ public class BoardState {
     public String backtrackPath() {
         StringBuilder sb = new StringBuilder();
         while (previousMove != null) {
-            if ((previousMove.val&8) != 0) {
+            if ((previousMove.val & 8) != 0) {
                 // Move was jump
                 // Have to search for path
-                int startRow = previousMove.val>>4&((1<<10)-1);
-                int startCol = previousMove.val>>14;
+                int startRow = previousMove.val >> 4 & ((1 << 10) - 1);
+                int startCol = previousMove.val >> 14;
                 int[][] prev = new int[height][width];
                 for (int i = 0; i < height; i++) {
                     Arrays.fill(prev[i], -2);
                 }
                 LinkedList<int[]> q = new LinkedList<int[]>();
-                q.add(new int[] {startRow, startCol});
+                q.add(new int[]{ startRow, startCol });
                 prev[startRow][startCol] = -1;
                 while (!q.isEmpty()) {
                     int[] state = q.removeFirst();
@@ -331,23 +323,24 @@ public class BoardState {
                         int newCol = col + dc[dir];
                         if (isFree(newRow, newCol) && prev[newRow][newCol] == -2) {
                             prev[newRow][newCol] = dir;
-                            q.add(new int[] {newRow, newCol});
+                            q.add(new int[]{ newRow, newCol });
                         }
                     }
                 }
-            } else {
-                sb.append(directionCharacters[previousMove.val&3]);
+            }
+            else {
+                sb.append(directionCharacters[previousMove.val & 3]);
             }
             reverseMove();
         }
         return sb.reverse().toString();
     }
 
-    public String temp(){
+    public String getStepsTaken() {
         StringBuilder sb = new StringBuilder();
         StackEntry tempVar = previousMove;
         while (tempVar != null) {
-            sb.append(directionCharacters[tempVar.val&3]);
+            sb.append(directionCharacters[tempVar.val & 3]);
             tempVar = tempVar.prev;
         }
         return sb.reverse().toString();
@@ -357,22 +350,23 @@ public class BoardState {
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
+        if (Main.useGameStateHash) {
+            hashNewPosition(oldRow, oldCol, newRow, newCol, true);
+        }
         board[oldRow][oldCol] &= ~BOX;
         board[newRow][newCol] |= BOX;
         board[newRow][newCol] |= -16 & board[oldRow][oldCol];
         board[oldRow][oldCol] &= 15;
-        if(Main.useGameStateHash){
-            hashNewPosition(oldRow, oldCol, newRow, newCol, true);
-        }
     }
 
-    private void hashNewPosition(int oldRow, int oldCol, int newRow, int newCol, boolean isBox){
-        if(isBox){
-            playerAndBoxesHashCells.remove(height*width + oldCol + oldRow*width);
-            playerAndBoxesHashCells.add(height*width + newCol + newRow*width);
-        }else {
-            playerAndBoxesHashCells.remove(oldCol + oldRow*width);
-            playerAndBoxesHashCells.add(newCol + newRow*width);
+    private void hashNewPosition(int oldRow, int oldCol, int newRow, int newCol, boolean isBox) {
+        if (isBox) {
+            playerAndBoxesHashCells.remove(height * width + oldCol + oldRow * width);
+            playerAndBoxesHashCells.add(height * width + newCol + newRow * width);
+        }
+        else {
+            playerAndBoxesHashCells.remove(oldCol + oldRow * width);
+            playerAndBoxesHashCells.add(newCol + newRow * width);
         }
     }
 
@@ -380,47 +374,41 @@ public class BoardState {
      * Helper method that does not do error checking
      */
     private void movePlayer(int newRow, int newCol) {
-        board[playerRow][playerCol] &= ~PLAYER;
-        board[newRow][newCol] |= PLAYER;
-
-        if(Main.useGameStateHash){
+        if (Main.useGameStateHash) {
             hashNewPosition(playerRow, playerCol, newRow, newCol, false);
         }
+        board[playerRow][playerCol] &= ~PLAYER;
+        board[newRow][newCol] |= PLAYER;
         playerRow = newRow;
         playerCol = newCol;
     }
 
-    public void hashCurrentGameState(int depth){
-        if(Main.useSimpleHash){
-            gameStateHash.put(Arrays.copyOf(playerAndBoxesHashCellsSimple, playerAndBoxesHashCells.size()), depth);
-        }else{
-            gameStateHash.put(new HashSet<Integer>(playerAndBoxesHashCells), depth);
-        }
+    public void hashCurrentGameState(int depth) {
+        gameStateHash.put(new HashSet<Integer>(playerAndBoxesHashCells), depth);
     }
 
-    public void clearHashTable(){
+    public void clearHashTable() {
         gameStateHash.clear();
-        playerAndBoxesHashCells = new HashSet<Integer>(tempTest);
-
     }
 
-    public boolean isPreviousGameState(int currentDepth){
+    public boolean isPreviousGameState(int currentDepth) {
         Integer oldDepth = gameStateHash.get(playerAndBoxesHashCells);
-        if(oldDepth == null){
+        if (oldDepth == null) {
             return false;
-        }else if(oldDepth > currentDepth){
+        } else if (oldDepth > currentDepth) {
             hashCurrentGameState(currentDepth);
             return false;
-        }else{
+        }
+        else {
             return true;
         }
     }
 
     public static int getOppositeDirection(int direction) {
-        return (direction + 2)&3;
+        return (direction + 2) & 3;
     }
 
-    public boolean isTrappingCell(int row, int col){
+    public boolean isTrappingCell(int row, int col) {
         return trappingCells[row][col];
     }
 
@@ -440,7 +428,7 @@ public class BoardState {
         return isBox(playerRow + dr[direction], playerCol + dc[direction]);
     }
 
-    public int getBoxIndexInDirection(int direction){
+    public int getBoxIndexInDirection(int direction) {
         return getBoxNumber(playerRow + dr[direction], playerCol + dc[direction]);
     }
 
@@ -453,9 +441,9 @@ public class BoardState {
     }
 
     // TODO this should be updated while moving
-    public boolean isBoardSolved(){
-        for(int[] goal: goalCells){
-            if(!((board[goal[0]][goal[1]]&15) == BOX_ON_GOAL)){
+    public boolean isBoardSolved() {
+        for (int[] goal : goalCells) {
+            if (!((board[goal[0]][goal[1]] & 15) == BOX_ON_GOAL)) {
                 return false;
             }
         }
@@ -486,8 +474,9 @@ public class BoardState {
     }
 
     static class StackEntry {
-        int val;
+        int        val;
         StackEntry prev;
+
         public StackEntry(int val, StackEntry prev) {
             this.val = val;
             this.prev = prev;
@@ -498,11 +487,13 @@ public class BoardState {
         StringBuilder sb = new StringBuilder();
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
-                if(isWall(row,col)){
+                if (isWall(row, col)) {
                     sb.append(boardCharacters[board[row][col] & 15]);
-                }else if(isTrappingCell(row, col)){
+                }
+                else if (isTrappingCell(row, col)) {
                     sb.append('x');
-                }else{
+                }
+                else {
                     sb.append(FREE_SPACE_CHAR);
                 }
             }
@@ -511,14 +502,7 @@ public class BoardState {
         return sb.toString();
     }
 
-    private int generateHashVectorOfTwo(int[] vector, boolean small){
-        if(small)
-            return vector[0] + PRIME*vector[1];
-        else
-            return vector[0]*PRIME + PRIME*PRIME*vector[1];
-    }
-
-    public int getBoxNumber(int row, int col){
+    public int getBoxNumber(int row, int col) {
         return board[row][col] >> 4;
     }
 
