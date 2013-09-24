@@ -247,7 +247,7 @@ public class BoardState {
         for (int rowDiff = 0; rowDiff < 2; rowDiff++) {
             for (int colDiff = 0; colDiff < 2; colDiff++) {
                 if (isFree(row + rowDiff, col + colDiff)) return true;
-                unmatchedBox |= board[row + rowDiff][col + colDiff] == BOX;
+                unmatchedBox |= (board[row + rowDiff][col + colDiff]&15) == BOX;
             }
         }
         return !unmatchedBox;
@@ -455,7 +455,7 @@ public class BoardState {
     // TODO this should be updated while moving
     public boolean isBoardSolved(){
         for(int[] goal: goalCells){
-            if(!(board[goal[0]][goal[1]] == BOX_ON_GOAL)){
+            if(!((board[goal[0]][goal[1]]&15) == BOX_ON_GOAL)){
                 return false;
             }
         }

@@ -8,7 +8,7 @@ public class Main {
 
     public static boolean debug = false;
     public static boolean useSimpleHash = false;
-    public static boolean useGameStateHash = false | useSimpleHash;
+    public static boolean useGameStateHash = true | useSimpleHash;
 
 
     public static void main(String[] args) throws IOException {
