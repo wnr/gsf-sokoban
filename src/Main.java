@@ -1,15 +1,23 @@
 import java.io.*;
+import java.lang.reflect.Array;
 import java.util.*;
 
 public class Main {
+    public static final int START_MAX_DEPTH = 1;
+    public static final int END_MAX_DEPTH = 30;
+
     public static boolean debug = false;
+    public static boolean useSimpleHash = false;
+    public static boolean useGameStateHash = false | useSimpleHash;
+
 
     public static void main(String[] args) throws IOException {
-        BoardState board = null;
 
+        BoardState board = null;
         for(int i = 0; i < args.length; i++) {
             if(args[i].contains("debug") || args[i].contains("-d")) {
                 Main.debug = true;
+                args = removeArrayElement(args, i);
                 break;
             }
         }
@@ -48,6 +56,8 @@ public class Main {
         }
 
 
+
+
         if(debug) System.out.println(board);
 
         String path = iddfs(board);
@@ -56,17 +66,37 @@ public class Main {
         if(debug) System.out.println(isValidAnswer(board, path) ? "Path is VALID" : "Path is INVALID");
     }
 
+
+    private static <T> T[] removeArrayElement(T[] array, int... elementIndexes){
+        for(int e: elementIndexes){
+            array = removeArrayElement(array, e);
+        }
+        return array;
+    }
+
+    @SuppressWarnings({"unchecked"})
+    private static <T> T[] removeArrayElement(T[] array, int elementIndex) {
+    T[] returnArray = (T[]) Array.newInstance(array[0].getClass() ,array.length - 1);
+        System.arraycopy(array, 0, returnArray, 0, elementIndex );
+        System.arraycopy(array, elementIndex+1, returnArray, elementIndex, array.length - elementIndex-1);
+        return returnArray;
+    }
+
     private static String res;
     private static long visitedStates;
     public static String iddfs(BoardState board) {
+        long startTime = System.currentTimeMillis();
         res = null;
-        for (int maxDepth = 1; maxDepth < 50; maxDepth++) {
-            board.clearHashTable();
-
+        for (int maxDepth = START_MAX_DEPTH; maxDepth < END_MAX_DEPTH; maxDepth++) {
+            long relativeTime = System.currentTimeMillis();
+            if(useGameStateHash) board.clearHashTable();
             visitedStates = 0;
             if(debug) System.out.print("Trying depth " + maxDepth + "... ");
             boolean done = dfs(board, 0, maxDepth);
-            if(debug) System.out.println("visited " + visitedStates + " states");
+            if(debug) {
+                System.out.print("visited " + visitedStates + " states. ");
+                System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTime));
+            }
             if (done) return res;
         }
         return null;
@@ -89,8 +119,10 @@ public class Main {
 //            }
 //        }
 
-//        if (board.isPreviousGameState(depth)) return false;
-//        board.hashCurrentGameState(depth);
+        if(useGameStateHash){
+            if (board.isPreviousGameState(depth)) return false;
+            board.hashCurrentGameState(depth);
+        }
         // First try and push a box from where we stand
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
@@ -134,5 +166,7 @@ public class Main {
         boolean good = board.isBoardSolved();
         board.backtrackPath();
         return good;
+
+
     }
 }
