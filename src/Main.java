@@ -4,14 +4,14 @@ import java.util.*;
 
 public class Main {
 
-    public static boolean debug = false;
+    public static boolean debug            = false;
     public static boolean useGameStateHash = true;
 
     public static void main(String[] args) throws IOException {
 
         BoardState board = null;
-        for(int i = 0; i < args.length; i++) {
-            if(args[i].contains("debug") || args[i].contains("-d")) {
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].contains("debug") || args[i].contains("-d")) {
                 Main.debug = true;
                 args = removeArrayElement(args, i);
                 break;
@@ -25,8 +25,8 @@ public class Main {
             BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 
             String line;
-            while((line = in.readLine()) != null) {
-                if(line.contains(";")){
+            while ((line = in.readLine()) != null) {
+                if (line.contains(";")) {
                     break;
                 }
                 lines.add(line);
@@ -37,11 +37,12 @@ public class Main {
             int boardNum = -1;
             try {
                 boardNum = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
+            }
+            catch (NumberFormatException e) {
                 System.err.println("Argument must be a board number");
                 System.exit(0);
             }
-            if(debug) System.out.println("Searching for board " + boardNum + "...");
+            if (debug) { System.out.println("Searching for board " + boardNum + "..."); }
             board = BoardUtil.getTestBoard(boardNum);
             if (board == null) {
                 System.out.println("Invalid board number: " + boardNum);
@@ -55,46 +56,47 @@ public class Main {
 
         board.setup();
 
-        if(debug) System.out.println(board);
+        if (debug) { System.out.println(board); }
 
         String path = idAStar(board);
-        if(debug) System.out.println("Path found: ");
+        if (debug) { System.out.println("Path found: "); }
         System.out.println(path);
-        if(debug) System.out.println(isValidAnswer(board, path) ? "Path is VALID" : "Path is INVALID");
+        if (debug) { System.out.println(isValidAnswer(board, path) ? "Path is VALID" : "Path is INVALID"); }
     }
 
 
-    private static <T> T[] removeArrayElement(T[] array, int... elementIndexes){
-        for(int e: elementIndexes){
+    private static <T> T[] removeArrayElement(T[] array, int... elementIndexes) {
+        for (int e : elementIndexes) {
             array = removeArrayElement(array, e);
         }
         return array;
     }
 
-    @SuppressWarnings({"unchecked"})
+    @SuppressWarnings({ "unchecked" })
     private static <T> T[] removeArrayElement(T[] array, int elementIndex) {
-    T[] returnArray = (T[]) Array.newInstance(array[0].getClass() ,array.length - 1);
-        System.arraycopy(array, 0, returnArray, 0, elementIndex );
-        System.arraycopy(array, elementIndex+1, returnArray, elementIndex, array.length - elementIndex-1);
+        T[] returnArray = (T[]) Array.newInstance(array[0].getClass(), array.length - 1);
+        System.arraycopy(array, 0, returnArray, 0, elementIndex);
+        System.arraycopy(array, elementIndex + 1, returnArray, elementIndex, array.length - elementIndex - 1);
         return returnArray;
     }
 
     private static String res;
-    private static long visitedStates;
+    private static long   visitedStates;
+
     public static String idAStar(BoardState board) {
         long startTime = System.currentTimeMillis();
         res = null;
         int startValue = board.getBoardValue();
-        for (int maxValue = startValue; maxValue < startValue + 30; maxValue += 2) {
+        for (int maxValue = startValue; !debug || maxValue < startValue + 30; maxValue += 2) {
             long relativeTime = System.currentTimeMillis();
             visitedStates = 0;
-            if(debug) System.out.print("Trying maxValue " + maxValue + "... ");
+            if (debug) { System.out.print("Trying maxValue " + maxValue + "... "); }
             boolean done = dfs(board, 0, maxValue);
-            if(debug) {
+            if (debug) {
                 System.out.print("visited " + visitedStates + " states. ");
                 System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTime));
             }
-            if (done) return res;
+            if (done) { return res; }
         }
         return null;
     }
@@ -107,25 +109,25 @@ public class Main {
         }
         board.analyzeBoard();
         int[][] jumps = board.getPossibleJumpPositions();
-        if (board.getBoardValue() > maxValue - depth) return false;
+        if (board.getBoardValue() > maxValue - depth) { return false; }
 
-//        if (depth == maxDepth - 1) {
-//            System.out.println(board);
-//            try {
-//                Thread.sleep(200);
-//            } catch (InterruptedException e) {
-//
-//            }
-//        }
+        //        if (depth == maxDepth - 1) {
+        //            System.out.println(board);
+        //            try {
+        //                Thread.sleep(200);
+        //            } catch (InterruptedException e) {
+        //
+        //            }
+        //        }
 
-        if(useGameStateHash){
-            if (!board.hashCurrentBoardState(depth, maxValue)) return false;
+        if (useGameStateHash) {
+            if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
         }
         // First try and push a box from where we stand
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                 board.performMove(dir);
-                if (dfs(board, depth + 1, maxValue)) return true;
+                if (dfs(board, depth + 1, maxValue)) { return true; }
                 board.reverseMove();
             }
         }
@@ -136,7 +138,7 @@ public class Main {
             for (int dir = 0; dir < 4; dir++) {
                 if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                     board.performMove(dir);
-                    if (dfs(board, depth + 1, maxValue)) return true;
+                    if (dfs(board, depth + 1, maxValue)) { return true; }
                     board.reverseMove();
                 }
             }
@@ -149,13 +151,17 @@ public class Main {
         for (char ch : moves.toCharArray()) {
             switch (ch) {
                 case 'U':
-                    board.performMove(BoardState.UP); break;
+                    board.performMove(BoardState.UP);
+                    break;
                 case 'R':
-                    board.performMove(BoardState.RIGHT); break;
+                    board.performMove(BoardState.RIGHT);
+                    break;
                 case 'D':
-                    board.performMove(BoardState.DOWN); break;
+                    board.performMove(BoardState.DOWN);
+                    break;
                 case 'L':
-                    board.performMove(BoardState.LEFT); break;
+                    board.performMove(BoardState.LEFT);
+                    break;
                 default:
                     throw new RuntimeException("Invalid move: " + ch);
             }
@@ -163,7 +169,5 @@ public class Main {
         boolean good = board.isBoardSolved();
         board.backtrackPath();
         return good;
-
-
     }
 }

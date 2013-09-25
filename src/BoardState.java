@@ -1,4 +1,10 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
 
 public class BoardState {
 
@@ -59,8 +65,8 @@ public class BoardState {
     private int[][]     possibleJumpPositions;
 
 
-    private int[]                            playerAndBoxesHashCells;
-    private HashMap<HashSet<Integer>, int[]> gameStateHash;
+    private int[]                   playerAndBoxesHashCells;
+    private HashMap<Integer, int[]> gameStateHash;
 
 
     public BoardState(List<String> lines) {
@@ -104,7 +110,7 @@ public class BoardState {
         }
 
         if (Main.useGameStateHash) {
-            gameStateHash = new HashMap<HashSet<Integer>, int[]>();
+            gameStateHash = new HashMap<Integer, int[]>();
             playerAndBoxesHashCells = new int[boxCnt + 1];
         }
 
@@ -130,7 +136,7 @@ public class BoardState {
                     int boxNum = getBoxNumber(row, col);
                     boxCells[boxNum][0] = row;
                     boxCells[boxNum][1] = col;
-                    if(Main.useGameStateHash) playerAndBoxesHashCells[boxIndex] = col + width * row;
+                    if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = col + width * row; }
                     boxIndex++;
                 }
             }
@@ -143,12 +149,12 @@ public class BoardState {
         }
 
         int playerSection = boardSections[playerRow][playerCol];
-        if(Main.useGameStateHash) playerAndBoxesHashCells[boxIndex] = width * height + playerSection;
+        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = width * height + playerSection; }
 
         LinkedList<int[]> moves = new LinkedList<int[]>();
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
-                if (row == playerRow && col == playerCol) continue;
+                if (row == playerRow && col == playerCol) { continue; }
                 if (boardSections[row][col] == playerSection) {
                     for (int dir = 0; dir < 4; dir++) {
                         int newRow = row + dr[dir], newCol = col + dc[dir];
@@ -291,7 +297,7 @@ public class BoardState {
     private void updateMatchingForBox(int box) {
         int r = boxCells[box][0], c = boxCells[box][1];
         for (int otherBox = 0; otherBox < boxCnt; otherBox++) {
-            if (box == otherBox) continue;
+            if (box == otherBox) { continue; }
             int g = matchedGoal[box];
             int r2 = boxCells[otherBox][0], c2 = boxCells[otherBox][1];
             int g2 = matchedGoal[otherBox];
@@ -502,10 +508,6 @@ public class BoardState {
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
-        //        if (Main.useGameStateHash) {
-        //            hashNewPosition(oldRow, oldCol, newRow, newCol, true);
-        //        }
-
         board[oldRow][oldCol] &= ~BOX;
         board[newRow][newCol] |= BOX;
         board[newRow][newCol] |= -16 & board[oldRow][oldCol];
@@ -516,9 +518,6 @@ public class BoardState {
      * Helper method that does not do error checking
      */
     private void movePlayer(int newRow, int newCol) {
-        //        if (Main.useGameStateHash) {
-        //            hashNewPosition(playerRow, playerCol, newRow, newCol, false);
-        //        }
         board[playerRow][playerCol] &= ~PLAYER;
         board[newRow][newCol] |= PLAYER;
         playerRow = newRow;
@@ -528,11 +527,8 @@ public class BoardState {
 
     public boolean hashCurrentBoardState(int currentDepth, int currentIteration) {
         boolean newState = false;
-        HashSet<Integer> boxAndPlayerSet = new HashSet<Integer>();
-        for (int hashValue : playerAndBoxesHashCells) {
-            boxAndPlayerSet.add(hashValue);
-        }
-        int[] cashedDepthInfo = gameStateHash.get(boxAndPlayerSet);
+        int hashCode = Arrays.hashCode(playerAndBoxesHashCells);
+        int[] cashedDepthInfo = gameStateHash.get(hashCode);
         if (cashedDepthInfo == null) {
             newState = true;
         } else {
@@ -543,7 +539,7 @@ public class BoardState {
             }
         }
         if (newState) {
-            gameStateHash.put(boxAndPlayerSet, new int[]{ currentDepth, currentIteration });
+            gameStateHash.put(hashCode, new int[]{ currentDepth, currentIteration });
         }
         return newState;
     }
@@ -642,15 +638,4 @@ public class BoardState {
     public int getBoxNumber(int row, int col) {
         return board[row][col] >> 4;
     }
-
-
-    //    private void hashNewPosition(int oldRow, int oldCol, int newRow, int newCol, boolean isBox) {
-    //        if (isBox) {
-    //            playerAndBoxesHashCells.remove(height * width + oldCol + oldRow * width);
-    //            playerAndBoxesHashCells.add(height * width + newCol + newRow * width);
-    //        } else {
-    //            playerAndBoxesHashCells.remove(oldCol + oldRow * width);
-    //            playerAndBoxesHashCells.add(newCol + newRow * width);
-    //        }
-    //    }
 }
