@@ -56,6 +56,8 @@ removeDir('temp', function(err) {
                 var tester = new Tester(tests, config.timeout);
                 tester.run(function done() {
                   tester.printResults();
+		  tester.printPassed();
+		  tester.printTimeouts();
                   tester.printExceptions();
                 });
               });
@@ -82,7 +84,7 @@ removeDir('temp', function(err) {
   this.maps = maps;
   this.tests = maps.length;
   this.executed = 0;
-  this.passed = 0;
+  this.passed = [];
   this.failed = 0;
   this.running = 0;
   this.exceptions = [];
@@ -127,6 +129,8 @@ Tester.prototype.test = function(map, level, cb) {
 
   var self = this;
 
+  var time = Date.now();
+
   test(map, this.timeout, function(err, result) {
     self.running--;
     self.executed++;
@@ -136,9 +140,11 @@ Tester.prototype.test = function(map, level, cb) {
 
       if(err) {
         self.exceptions.push({
+	  level: parseInt(level, 10),
           test: 'Test ' + level,
           err: err.message === 'Command failed: ' ? 'Timeout' : err.message,
-          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
+	  timeout: err.message === 'Command failed: '
         });
       }
     }
@@ -148,7 +154,7 @@ Tester.prototype.test = function(map, level, cb) {
 
       try {
         if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
-         self.passed++;
+	 self.passed.push(new self.TestResult(level, Date.now() - time));
         } else {
          self.failed++;
         }
@@ -179,27 +185,79 @@ Tester.prototype.test = function(map, level, cb) {
   });
 };
 
-Tester.prototype.printExceptions = function(cmd) {
+Tester.prototype.printExceptions = function(cmd, timeouts) {
   if(!cmd) {
     cmd = false;
   }
 
   console.log('');
 
-  if(this.exceptions.length) {
+  var e = this.exceptions;
+
+  if(!timeouts) {
+    e = e.filter(function(o) {
+      return !o.timeout;
+    });
+  }
+
+  if(e.length) {
     printHeader('Exceptions', chalk.red);
 
-    for(var i = 0; i < this.exceptions.length; i++) {
-      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + (cmd ? '\n' + chalk.yellow('Test with: ' + this.exceptions[i].cmd) : ''));
+    for(var i = 0; i < e.length; i++) {
+      console.log(chalk.red(e[i].test) + '\n' + e[i].err + (cmd ? '\n' + chalk.yellow('Test with: ' + e[i].cmd) : ''));
     }
   }
 };
 
 Tester.prototype.printResults = function() {
+  console.log('');
   console.log('Total:    ' + this.bar.total);
-  console.log('Passed:   ' + chalk.green(this.passed.toString()));
+  console.log('Passed:   ' + chalk.green(this.passed.length.toString()));
   console.log('Failed:   ' + chalk.red(this.failed.toString()));
   console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
+};
+
+Tester.prototype.printPassed = function() {
+  var p = this.passed.sort(function(a, b) {
+    if(a.level < b.level) {
+      return -1
+    }
+
+    return 1;
+  });
+
+  var str = '\nPassed:';
+
+  for(var i = 0; i < p.length; i++) {
+    str += '\n' + p[i].level + (p[i].time ? '\t(' + p[i].time/1000 + ' s)' : '') + ' ';
+  }
+
+  console.log(chalk.green(str));
+};
+
+Tester.prototype.printTimeouts = function() {
+  var timeouts = this.exceptions.filter(function(o) {
+    return o.timeout;
+  }).sort(function(a, b) {
+    if(a.level < b.level) {
+      return -1;
+    }
+
+    return 1;
+  });
+
+  var str = '\nTimeouts (' + this.timeout/1000 + ' s):\n';
+
+  for(var i = 0; i < timeouts.length; i++) {
+    str += timeouts[i].level + ' ';
+  }
+
+  console.log(chalk.red(str));
+};
+
+Tester.prototype.TestResult = function(level, time) {
+  this.level = level;
+  this.time = time;
 };
 
 /**
@@ -243,7 +301,7 @@ Walker.prototype.parseMap = function(map) {
   }).map(function(e) {
     return e.split('');
   });
-debugger;
+
   for(var x = 0; x < m.length; x++) {
     var y = indexOfEither(m[x], '@+');
 
