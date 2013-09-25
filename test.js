@@ -56,9 +56,10 @@ removeDir('temp', function(err) {
                 var tester = new Tester(tests, config.timeout);
                 tester.run(function done() {
                   tester.printResults();
-		  tester.printPassed();
-		  tester.printTimeouts();
+                  tester.printPassed();
+                  tester.printTimeouts();
                   tester.printExceptions();
+                  tester.printVisual();
                 });
               });
             }
@@ -229,11 +230,50 @@ Tester.prototype.printPassed = function() {
   var str = '\nPassed:';
 
   for(var i = 0; i < p.length; i++) {
-    str += '\n' + p[i].level + (p[i].time ? '\t(' + p[i].time/1000 + ' s)' : '') + ' ';
+    str += '\n' + p[i].level + (p[i].time ? '\t  (' + p[i].time/1000 + ' s)' : '') + ' ';
   }
 
   console.log(chalk.green(str));
 };
+
+Tester.prototype.printVisual = function() {
+  var visuals = [];
+
+  for(var i = 0; i < this.passed.length; i++) {
+    visuals.push({
+      level: this.passed[i].level,
+      passed: true
+    });
+  }
+
+  for(i = 0; i < this.exceptions.length; i++) {
+    visuals.push({
+      level: this.exceptions[i].level,
+      passed: false,
+      timeout: this.exceptions[i].timeout
+    });
+  }
+
+  visuals = visuals.sort(function(a, b) {
+    if(a.level < b.level) {
+      return -1;
+    }
+
+    return 1;
+  });
+
+  var str = '\n';
+
+  for(i = 0; i < visuals.length; i++) {
+    if(visuals[i].passed) {
+      str += chalk.bgGreen.black(' ' + visuals[i].level + ' ');
+    } else {
+      str += chalk.bgRed.black(' ' + visuals[i].level + ' ');
+    }
+  }
+
+  console.log(str);
+}
 
 Tester.prototype.printTimeouts = function() {
   var timeouts = this.exceptions.filter(function(o) {
