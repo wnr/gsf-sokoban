@@ -17,12 +17,12 @@ var ProgessBar = require('progress');
 //-----------------------------------------------------------------------------
 
 var config = {
-  tests: 20,
-  timeout: 10*1000
+  tests: Infinity,
+  timeout: 1*1000
 };
-
-config.tests = process.argv[2] || config.tests; //TODO: Fix so that if nothing is inputted, the default should be all tests.
-config.timeout = process.argv[3] || config.timeout;
+debugger;
+config.tests = process.argv[2] || config.tests;
+config.timeout = parseInt(process.argv[3], 10)*1000 || config.timeout;
 
 printHeader('Google Search First Sokoban Test');
 
