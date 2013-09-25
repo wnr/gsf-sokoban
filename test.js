@@ -38,11 +38,28 @@ removeDir('temp', function(err) {
       compile(function(err) {
         if(err) { throw err; }
 
-        readTestData('test.data', config.tests, function(err, tests) {
-          var tester = new Tester(tests, config.timeout);
+        readTestData('samples.data', function(err, samples) {
+          if(err) { throw err; }
+
+          var tester = new Tester(samples, config.timeout, true);
+
+          printJob('Testing samples');
           tester.run(function done() {
-            tester.printResults();
-            tester.printExceptions();
+            if(tester.failed > 0) {
+              printJobFailed();
+              tester.printExceptions(true);
+            } else {
+              printJobDone();
+              readTestData('test.data', config.tests, function(err, tests) {
+                if(err) { throw err; }
+
+                var tester = new Tester(tests, config.timeout);
+                tester.run(function done() {
+                  tester.printResults();
+                  tester.printExceptions();
+                });
+              });
+            }
           });
         });
       });
@@ -57,7 +74,7 @@ removeDir('temp', function(err) {
 /**
  * Tester
  */
- function Tester(maps, timeout) {
+ function Tester(maps, timeout, silent) {
   if(!Array.isArray(maps)) {
     throw new Error('Maps data required');
   }
@@ -73,26 +90,20 @@ removeDir('temp', function(err) {
   this.cpus = os.cpus().length;
   this.time = Date.now();
   this.timeout = timeout || 0;
+  this.silent = silent || false;
 
-  this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
-    width: (this.tests <= 100 ? this.tests : 100) + 1,
-    total: this.tests,
-    complete: '>',
-    incomplete: '='
-  });
+  if(!silent) {
+    this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
+      width: (this.tests <= 100 ? this.tests : 100) + 1,
+      total: this.tests,
+      complete: '>',
+      incomplete: '='
+    });
+  }
 }
 
-Tester.prototype.run = function(print, cb) {
-  if(!cb && typeof print === 'function') {
-    cb = print;
-    print = null;
-  }
-
-  if(!print) {
-    print = true;
-  }
-
-  if(print) {
+Tester.prototype.run = function(cb) {
+  if(!this.silent) {
     console.log('\n' + chalk.yellow(this.tests + ' tests to be executed by ' + this.cpus + ' cores.') + '\n');
   }
 
@@ -145,13 +156,15 @@ Tester.prototype.test = function(map, level, cb) {
         self.failed++;
         self.exceptions.push({
          test: 'Test ' + level,
-         err: 'Result: ' + result + '\nExceptio:' + e,
+         err: 'Result: ' + result + '\nException: ' + e,
          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
        });
       }
     }
 
-    self.bar.tick();
+    if(self.bar) {
+      self.bar.tick();
+    }
 
     if(self.isDone()) {
       if(cb) {
@@ -166,14 +179,18 @@ Tester.prototype.test = function(map, level, cb) {
   });
 };
 
-Tester.prototype.printExceptions = function() {
+Tester.prototype.printExceptions = function(cmd) {
+  if(!cmd) {
+    cmd = false;
+  }
+
   console.log('');
 
   if(this.exceptions.length) {
     printHeader('Exceptions', chalk.red);
 
     for(var i = 0; i < this.exceptions.length; i++) {
-      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + this.exceptions[i].cmd) */);
+      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + (cmd ? '\n' + chalk.yellow('Test with: ' + this.exceptions[i].cmd) : ''));
     }
   }
 };
@@ -209,7 +226,7 @@ Walker.prototype.parseMap = function(map) {
 
     for(var i = 0; i < searches.length; i++) {
       var r = object.indexOf(searches[i]);
-      if(r) {
+      if(~r) {
         return r;
       }
     }
@@ -226,7 +243,7 @@ Walker.prototype.parseMap = function(map) {
   }).map(function(e) {
     return e.split('');
   });
-
+debugger;
   for(var x = 0; x < m.length; x++) {
     var y = indexOfEither(m[x], '@+');
 
@@ -236,7 +253,7 @@ Walker.prototype.parseMap = function(map) {
   }
 
   if(!this.player) {
-    throw new Error('Unable to find player in map.');
+    throw new Error('Unable to find player in map:\n' + map);
   }
 
   return m;
@@ -349,6 +366,11 @@ Walker.prototype.moveBox = function(from, to) {
 //-----------------------------------------------------------------------------
 
 function readTestData(file, limit, cb) {
+  if(typeof limit === 'function') {
+    cb = limit;
+    limit = Infinity;
+  }
+
   if(!cb) {
     throw new Error('Callback required.');
   }
@@ -422,7 +444,7 @@ function compile(cb) {
 
 function test(map, timeout, cb) {
   var child = execute('java -cp temp/out.sokoban Main', timeout, cb);
-  child.stdin.write(map.replace(/^\n/, '') + ';\n');
+  child.stdin.write(map.replace(/^\n/, '') + (map.match(/\n$/) === null ? '\n' : '') + ';\n');
 }
 
 function execute(job, cmd, timeout, cb) {
