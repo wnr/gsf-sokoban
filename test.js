@@ -57,7 +57,7 @@ removeDir('temp', function(err) {
 /**
  * Tester
  */
-function Tester(maps, timeout) {
+ function Tester(maps, timeout) {
   if(!Array.isArray(maps)) {
     throw new Error('Maps data required');
   }
@@ -136,18 +136,18 @@ Tester.prototype.test = function(map, level, cb) {
       var walker = new Walker(map);
 
       try {
-	if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
-	  self.passed++;
-	} else {
-	  self.failed++;
-	}
+        if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
+         self.passed++;
+        } else {
+         self.failed++;
+        }
       } catch(e) {
         self.failed++;
-	self.exceptions.push({
-	  test: 'Test ' + level,
-	  err: 'Result: ' + result + '\nExceptio:' + e,
-	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
-	});
+        self.exceptions.push({
+         test: 'Test ' + level,
+         err: 'Result: ' + result + '\nExceptio:' + e,
+         cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+       });
       }
     }
 
@@ -188,7 +188,7 @@ Tester.prototype.printResults = function() {
 /**
  * Walker
  */
-function Walker(map) {
+ function Walker(map) {
   if(map) {
     this.map = this.parseMap(map);
   }
@@ -224,8 +224,8 @@ Walker.prototype.parseMap = function(map) {
   var m = map.split('\n').filter(function(e) {
     return e.length > 0;
   }).map(function(e) {
-      return e.split('');
-    });
+    return e.split('');
+  });
 
   for(var x = 0; x < m.length; x++) {
     var y = indexOfEither(m[x], '@+');
