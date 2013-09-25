@@ -117,6 +117,7 @@ public class Play {
                         }
                     }
                     if (changed) {
+                        b.analyzeBoard();
                         System.out.println(b);
                         System.out.println("Board value: " + b.getBoardValue());
                         if (!goodMove) {

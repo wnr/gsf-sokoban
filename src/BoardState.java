@@ -136,12 +136,19 @@ public class BoardState {
             }
         }
 
+        if (movedBoxLastMove()) {
+            int dir = directionLastMove();
+            int box = getBoxNumber(playerRow + dr[dir], playerCol + dc[dir]);
+            updateMatchingForBox(box);
+        }
+
         int playerSection = boardSections[playerRow][playerCol];
         if(Main.useGameStateHash) playerAndBoxesHashCells[boxIndex] = width * height + playerSection;
 
         LinkedList<int[]> moves = new LinkedList<int[]>();
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
+                if (row == playerRow && col == playerCol) continue;
                 if (boardSections[row][col] == playerSection) {
                     for (int dir = 0; dir < 4; dir++) {
                         int newRow = row + dr[dir], newCol = col + dc[dir];
@@ -274,6 +281,23 @@ public class BoardState {
                         }
                     }
                 }
+            }
+        }
+        for (int box = 0; box < boxCnt; box++) {
+            updateMatchingForBox(box);
+        }
+    }
+
+    private void updateMatchingForBox(int box) {
+        int r = boxCells[box][0], c = boxCells[box][1];
+        for (int otherBox = 0; otherBox < boxCnt; otherBox++) {
+            if (box == otherBox) continue;
+            int g = matchedGoal[box];
+            int r2 = boxCells[otherBox][0], c2 = boxCells[otherBox][1];
+            int g2 = matchedGoal[otherBox];
+            if (goalDist[r][c][g] + goalDist[r2][c2][g2] > goalDist[r][c][g2] + goalDist[r2][c2][g]) {
+                matchedGoal[box] = g2;
+                matchedGoal[otherBox] = g;
             }
         }
     }

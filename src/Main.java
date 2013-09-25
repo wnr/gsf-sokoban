@@ -107,7 +107,6 @@ public class Main {
         }
         board.analyzeBoard();
         int[][] jumps = board.getPossibleJumpPositions();
-        board.initializeBoxToGoalMapping();
         if (board.getBoardValue() > maxValue - depth) return false;
 
 //        if (depth == maxDepth - 1) {
@@ -123,13 +122,13 @@ public class Main {
             if (!board.hashCurrentBoardState(depth, maxValue)) return false;
         }
         // First try and push a box from where we stand
-//        for (int dir = 0; dir < 4; dir++) {
-//            if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
-//                board.performMove(dir);
-//                if (dfs(board, depth + 1, maxValue)) return true;
-//                board.reverseMove();
-//            }
-//        }
+        for (int dir = 0; dir < 4; dir++) {
+            if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
+                board.performMove(dir);
+                if (dfs(board, depth + 1, maxValue)) return true;
+                board.reverseMove();
+            }
+        }
 
         // Now try moving first and then push
         for (int[] jump : jumps) {
