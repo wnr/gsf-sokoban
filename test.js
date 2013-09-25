@@ -20,7 +20,7 @@ var config = {
   tests: Infinity,
   timeout: 1*1000
 };
-debugger;
+
 config.tests = process.argv[2] || config.tests;
 config.timeout = parseInt(process.argv[3], 10)*1000 || config.timeout;
 
@@ -173,11 +173,9 @@ Tester.prototype.printExceptions = function() {
     printHeader('Exceptions', chalk.red);
 
     for(var i = 0; i < this.exceptions.length; i++) {
-      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' + chalk.yellow('Test with: ' + this.exceptions[i].cmd));
+      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + this.exceptions[i].cmd) */);
     }
   }
-
-  console.log('\n');
 };
 
 Tester.prototype.printResults = function() {
@@ -364,10 +362,11 @@ function readTestData(file, limit, cb) {
     }
 
     var result = data.split(/;LEVEL \d+/).splice(1, limit);
+    var levels = data.match(/\d+/g);
 
     for(var i = 0; i < result.length; i++) {
       result[i] = {
-        level: i+1,
+        level: levels[i],
         map: result[i].replace(/\r/g, '')
       };
     }
