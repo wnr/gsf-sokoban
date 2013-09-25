@@ -8,7 +8,6 @@ public class Main {
     public static boolean useGameStateHash = true;
 
     public static void main(String[] args) throws IOException {
-
         BoardState board = null;
         for (int i = 0; i < args.length; i++) {
             if (args[i].contains("debug") || args[i].contains("-d")) {
@@ -61,11 +60,11 @@ public class Main {
         String path = idAStar(board);
         if (debug) { System.out.println("Path found: "); }
         System.out.println(path);
-        if (debug) { System.out.println(isValidAnswer(board, path) ? "Path is VALID" : "Path is INVALID"); }
+        if (debug) { System.out.println(investigatePath(board, path, false) ? "Path is VALID" : "Path is INVALID"); }
     }
 
 
-    private static <T> T[] removeArrayElement(T[] array, int... elementIndexes) {
+    public static <T> T[] removeArrayElement(T[] array, int... elementIndexes) {
         for (int e : elementIndexes) {
             array = removeArrayElement(array, e);
         }
@@ -73,7 +72,7 @@ public class Main {
     }
 
     @SuppressWarnings({ "unchecked" })
-    private static <T> T[] removeArrayElement(T[] array, int elementIndex) {
+    public static <T> T[] removeArrayElement(T[] array, int elementIndex) {
         T[] returnArray = (T[]) Array.newInstance(array[0].getClass(), array.length - 1);
         System.arraycopy(array, 0, returnArray, 0, elementIndex);
         System.arraycopy(array, elementIndex + 1, returnArray, elementIndex, array.length - elementIndex - 1);
@@ -87,7 +86,7 @@ public class Main {
         long startTime = System.currentTimeMillis();
         res = null;
         int startValue = board.getBoardValue();
-        for (int maxValue = startValue; !debug || maxValue < startValue + 30; maxValue += 2) {
+        for (int maxValue = startValue; !debug || maxValue < startValue + 100; maxValue += 2) {
             long relativeTime = System.currentTimeMillis();
             visitedStates = 0;
             if (debug) { System.out.print("Trying maxValue " + maxValue + "... "); }
@@ -147,8 +146,8 @@ public class Main {
         return false;
     }
 
-    public static boolean isValidAnswer(BoardState board, String moves) {
-        for (char ch : moves.toCharArray()) {
+    public static boolean investigatePath(BoardState board, String path, boolean displaySteps) {
+        for (char ch : path.toCharArray()) {
             switch (ch) {
                 case 'U':
                     board.performMove(BoardState.UP);
@@ -164,6 +163,14 @@ public class Main {
                     break;
                 default:
                     throw new RuntimeException("Invalid move: " + ch);
+            }
+            if (displaySteps) {
+                System.out.println(board);
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+
+                }
             }
         }
         boolean good = board.isBoardSolved();
