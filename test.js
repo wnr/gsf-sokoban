@@ -18,10 +18,12 @@ var ProgessBar = require('progress');
 
 var config = {
   tests: Infinity,
-  timeout: 1*1000
+  timeout: 11*1000
 };
 
-config.tests = process.argv[2] || config.tests;
+if(process.argv[2] !== undefined) {
+  config.tests = parseInt(process.argv[2], 10);
+}
 config.timeout = parseInt(process.argv[3], 10)*1000 || config.timeout;
 
 printHeader('Google Search First Sokoban Test');
@@ -50,6 +52,11 @@ removeDir('temp', function(err) {
               tester.printExceptions(true);
             } else {
               printJobDone();
+
+              if(config.tests === 0) {
+                return;
+              }
+
               readTestData('test.data', config.tests, function(err, tests) {
                 if(err) { throw err; }
 
