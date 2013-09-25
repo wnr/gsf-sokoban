@@ -307,7 +307,7 @@ Tester.prototype.printTimeouts = function() {
     str += timeouts[i].level + ' ';
   }
 
-  process.stdout.write(chalk.red(str));
+  console.log(chalk.red(str));
 };
 
 Tester.prototype.TestResult = function(level, time) {
