@@ -53,7 +53,7 @@ public class Main {
         }
 
 
-        board.initializeGoalDistancesAndMapping();
+        board.setup();
 
         if(debug) System.out.println(board);
 
@@ -87,7 +87,6 @@ public class Main {
         int startValue = board.getBoardValue();
         for (int maxValue = startValue; maxValue < startValue + 30; maxValue += 2) {
             long relativeTime = System.currentTimeMillis();
-            if(useGameStateHash) board.clearHashTable();
             visitedStates = 0;
             if(debug) System.out.print("Trying maxValue " + maxValue + "... ");
             boolean done = dfs(board, 0, maxValue);
@@ -106,6 +105,8 @@ public class Main {
             res = board.backtrackPath();
             return true;
         }
+        board.analyzeBoard();
+        int[][] jumps = board.getPossibleJumpPositions();
         board.initializeBoxToGoalMapping();
         if (board.getBoardValue() > maxValue - depth) return false;
 
@@ -119,20 +120,18 @@ public class Main {
 //        }
 
         if(useGameStateHash){
-            if (board.isPreviousGameState(depth)) return false;
-            board.hashCurrentGameState(depth);
+            if (!board.hashCurrentBoardState(depth, maxValue)) return false;
         }
         // First try and push a box from where we stand
-        for (int dir = 0; dir < 4; dir++) {
-            if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
-                board.performMove(dir);
-                if (dfs(board, depth + 1, maxValue)) return true;
-                board.reverseMove();
-            }
-        }
+//        for (int dir = 0; dir < 4; dir++) {
+//            if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
+//                board.performMove(dir);
+//                if (dfs(board, depth + 1, maxValue)) return true;
+//                board.reverseMove();
+//            }
+//        }
 
         // Now try moving first and then push
-        int[][] jumps = board.getPossibleMovePositions();
         for (int[] jump : jumps) {
             board.performJump(jump[0], jump[1]);
             for (int dir = 0; dir < 4; dir++) {

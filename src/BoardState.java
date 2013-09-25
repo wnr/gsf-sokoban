@@ -49,17 +49,18 @@ public class BoardState {
     private int playerRow, playerCol;
     public int goalCnt, boxCnt;
 
-    private StackEntry               previousMove;
-    public  int                      playerCnt;
-    private int[][]                  board;
-    private int[][]                  boxCells;
-    private int[][]                  goalCells;
-    private int[][][]                goalDist;
-    private boolean[][]              trappingCells;
-    private int[]                    matchedGoal;
+    private StackEntry  previousMove;
+    private int[][]     board;
+    private int[][]     boxCells;
+    private int[][]     goalCells;
+    private int[][][]   goalDist;
+    private boolean[][] trappingCells;
+    private int[]       matchedGoal;
+    private int[][]     possibleJumpPositions;
 
-    private Set<Integer>         playerAndBoxesHashCells;
-    private Map<Object, Integer> gameStateHash;
+
+    private int[]                            playerAndBoxesHashCells;
+    private HashMap<HashSet<Integer>, int[]> gameStateHash;
 
 
     public BoardState(List<String> lines) {
@@ -70,14 +71,12 @@ public class BoardState {
         }
         board = new int[height][width];
         int row = 0;
-        List<int[]> tempBoxCells = new ArrayList<int[]>();
         List<int[]> tempGoalCells = new ArrayList<int[]>();
         for (String line : lines) {
             int col = 0;
             for (char cell : line.toCharArray()) {
                 board[row][col] = characterMapping.get(cell);
                 if (isPlayer(row, col)) {
-                    playerCnt++;
                     playerRow = row;
                     playerCol = col;
                 }
@@ -86,8 +85,7 @@ public class BoardState {
                     goalCnt++;
                 }
                 if (isBox(row, col)) {
-                    board[row][col] |= boxCnt<<4;
-                    tempBoxCells.add(new int[]{row, col});
+                    board[row][col] |= boxCnt << 4;
                     boxCnt++;
                 }
                 col++;
@@ -95,30 +93,100 @@ public class BoardState {
             row++;
         }
 
-        if (Main.useGameStateHash) {
-
-            gameStateHash = new HashMap<Object, Integer>();
-            playerAndBoxesHashCells = new HashSet<Integer>();
-            hashNewPosition(playerRow, playerCol, playerRow, playerCol, false);
-            for (int i = 0; i < boxCnt; i++) {
-                int boxRow = tempBoxCells.get(i)[0];
-                int boxCol = tempBoxCells.get(i)[1];
-                hashNewPosition(boxRow, boxCol, boxRow, boxCol, true);
+        boolean[][] visited = new boolean[height][width];
+        setOutsideSpaceDFS(playerRow, playerCol, visited);
+        for (row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                if (!isWall(row, col) && !visited[row][col]) {
+                    board[row][col] = WALL;
+                }
             }
         }
 
-        boxCells = new int[tempBoxCells.size()][];
-        for (int i = 0; i < boxCells.length; i++) {
-            boxCells[i] = tempBoxCells.get(i);
+        if (Main.useGameStateHash) {
+            gameStateHash = new HashMap<HashSet<Integer>, int[]>();
+            playerAndBoxesHashCells = new int[boxCnt + 1];
         }
 
-        goalCells = new int[tempGoalCells.size()][];
+        boxCells = new int[boxCnt][2];
+        goalCells = new int[goalCnt][];
         for (int i = 0; i < goalCells.length; i++) {
             goalCells[i] = tempGoalCells.get(i);
         }
     }
 
-    public void initializeGoalDistancesAndMapping() {
+    public void analyzeBoard() {
+        int[][] boardSections = new int[height][width];
+        int sectionIndex = 1;
+        int boxIndex = 0;
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                if (isFree(row, col)) {
+                    if (boardSections[row][col] == 0) {
+                        analyzeBoardDfs(row, col, sectionIndex, boardSections);
+                        sectionIndex++;
+                    }
+                } else if (isBox(row, col)) {
+                    int boxNum = getBoxNumber(row, col);
+                    boxCells[boxNum][0] = row;
+                    boxCells[boxNum][1] = col;
+                    if(Main.useGameStateHash) playerAndBoxesHashCells[boxIndex] = col + width * row;
+                    boxIndex++;
+                }
+            }
+        }
+
+        int playerSection = boardSections[playerRow][playerCol];
+        if(Main.useGameStateHash) playerAndBoxesHashCells[boxIndex] = width * height + playerSection;
+
+        LinkedList<int[]> moves = new LinkedList<int[]>();
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                if (boardSections[row][col] == playerSection) {
+                    for (int dir = 0; dir < 4; dir++) {
+                        int newRow = row + dr[dir], newCol = col + dc[dir];
+                        if (isBox(newRow, newCol)) {
+                            int newRow2 = newRow + dr[dir], newCol2 = newCol + dc[dir];
+                            if (isFree(newRow2, newCol2)) {
+                                moves.add(new int[]{ row, col });
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        possibleJumpPositions = new int[moves.size()][];
+        int i = 0;
+        for (int[] move : moves) {
+            possibleJumpPositions[i++] = move;
+        }
+    }
+
+    private void analyzeBoardDfs(int row, int col, int sectionIndex, int[][] boardSections) {
+        boardSections[row][col] = sectionIndex;
+        for (int dir = 0; dir < 4; dir++) {
+            int newRow = row + dr[dir];
+            int newCol = col + dc[dir];
+            if (isFree(newRow, newCol) && boardSections[newRow][newCol] == 0) {
+                analyzeBoardDfs(newRow, newCol, sectionIndex, boardSections);
+            }
+        }
+    }
+
+    private void setOutsideSpaceDFS(int row, int col, boolean[][] visited) {
+        visited[row][col] = true;
+        for (int dir = 0; dir < 4; dir++) {
+            int newRow = row + dr[dir];
+            int newCol = col + dc[dir];
+            if (!isWall(newRow, newCol) && !visited[newRow][newCol]) {
+                setOutsideSpaceDFS(newRow, newCol, visited);
+            }
+        }
+    }
+
+    public void setup() {
+        analyzeBoard();
         goalDist = new int[height][width][goalCnt];
         for (int r = 0; r < height; r++) {
             for (int c = 0; c < width; c++) {
@@ -142,7 +210,7 @@ public class BoardState {
                         int nc2 = nc + dc[dir];
                         if (!isWall(nr2, nc2)) {
                             goalDist[nr][nc][i] = d;
-                            q.add(new int[]{nr, nc});
+                            q.add(new int[]{ nr, nc });
                         }
                     }
                 }
@@ -163,11 +231,11 @@ public class BoardState {
 
     // TODO method to update mapping for only one cell
     public void initializeBoxToGoalMapping() {
-        PriorityQueue<int[]> leastCostPairs = new PriorityQueue<int[]>(goalCnt*boxCnt, new Comparator<int[]>() {
+        PriorityQueue<int[]> leastCostPairs = new PriorityQueue<int[]>(goalCnt * boxCnt, new Comparator<int[]>() {
             @Override
             public int compare(int[] a, int[] b) {
-                if (a[2] < b[2]) return -1;
-                if (a[2] > b[2]) return 1;
+                if (a[2] < b[2]) { return -1; }
+                if (a[2] > b[2]) { return 1; }
                 return 0;
             }
         });
@@ -176,7 +244,7 @@ public class BoardState {
             int boxC = boxCells[box][1];
             for (int goal = 0; goal < goalCnt; goal++) {
                 if (goalDist[boxR][boxC][goal] < INF) {
-                    leastCostPairs.add(new int[]{box, goal, goalDist[boxR][boxC][goal]});
+                    leastCostPairs.add(new int[]{ box, goal, goalDist[boxR][boxC][goal] });
                 }
             }
         }
@@ -211,8 +279,8 @@ public class BoardState {
     }
 
     private boolean match(int goal, int[] matchedBy, boolean[] visited) {
-        if (matchedBy[goal] == -1) return true;
-        if (visited[goal]) return false;
+        if (matchedBy[goal] == -1) { return true; }
+        if (visited[goal]) { return false; }
         visited[goal] = true;
         int matchingBox = matchedBy[goal];
         int boxR = boxCells[matchingBox][0];
@@ -239,8 +307,7 @@ public class BoardState {
             movePlayer(newRow, newCol);
             successful = true;
             previousMove = new StackEntry(direction, previousMove);
-        }
-        else if (isBox(newRow, newCol)) {
+        } else if (isBox(newRow, newCol)) {
             int newRow2 = newRow + dr[direction];
             int newCol2 = newCol + dc[direction];
             if (isFree(newRow2, newCol2)) {
@@ -253,44 +320,14 @@ public class BoardState {
         return successful;
     }
 
-    public int[][] getPossibleMovePositions() {
-        LinkedList<int[]> moves = new LinkedList<int[]>();
-        boolean[][] visited = new boolean[height][width];
-        getPossibleMovePositionsRec(playerRow, playerCol, visited, moves);
-        int[][] res = new int[moves.size()][];
-        int i = 0;
-        for (int[] move : moves) {
-            res[i++] = move;
-        }
-        return res;
-    }
 
-    private void getPossibleMovePositionsRec(int row, int col, boolean[][] visited, LinkedList<int[]> moves) {
-        visited[row][col] = true;
-        // Check if this is a cell from where we can move a box (and is not the current player cell)
-        if (row != playerRow || col != playerCol) {
-            for (int dir = 0; dir < 4; dir++) {
-                int newRow = row + dr[dir], newCol = col + dc[dir];
-                if (isBox(newRow, newCol)) {
-                    int newRow2 = newRow + dr[dir], newCol2 = newCol + dc[dir];
-                    if (isFree(newRow2, newCol2)) {
-                        moves.add(new int[]{ row, col });
-                        break;
-                    }
-                }
-            }
-        }
-        for (int dir = 0; dir < 4; dir++) {
-            int newRow = row + dr[dir], newCol = col + dc[dir];
-            if (isFree(newRow, newCol) && !visited[newRow][newCol]) {
-                getPossibleMovePositionsRec(newRow, newCol, visited, moves);
-            }
-        }
+    public int[][] getPossibleJumpPositions() {
+        return possibleJumpPositions;
     }
 
     /*
      * Teleports the player to the given position. No error checking done!
-     * Should only use positions given by getPossibleMovePositions()
+     * Should only use positions given by getPossibleJumpPositions()
      */
     public boolean performJump(int row, int col) {
         previousMove = new StackEntry(8 | playerRow << 4 | playerCol << 14, previousMove);
@@ -330,8 +367,8 @@ public class BoardState {
         boolean unmatchedBox = false;
         for (int rowDiff = 0; rowDiff < 2; rowDiff++) {
             for (int colDiff = 0; colDiff < 2; colDiff++) {
-                if (isFree(row + rowDiff, col + colDiff)) return true;
-                unmatchedBox |= (board[row + rowDiff][col + colDiff]&15) == BOX;
+                if (isFree(row + rowDiff, col + colDiff)) { return true; }
+                unmatchedBox |= (board[row + rowDiff][col + colDiff] & 15) == BOX;
             }
         }
         return !unmatchedBox;
@@ -352,8 +389,7 @@ public class BoardState {
             int r = previousMove.val >> 4 & ((1 << 10) - 1);
             int c = previousMove.val >> 14;
             movePlayer(r, c);
-        }
-        else {
+        } else {
             boolean movedBox = (previousMove.val & 4) != 0;
             int dir = previousMove.val & 3;
             int oppositeDir = getOppositeDirection(dir);
@@ -420,8 +456,7 @@ public class BoardState {
                         }
                     }
                 }
-            }
-            else {
+            } else {
                 sb.append(directionCharacters[previousMove.val & 3]);
             }
             reverseMove();
@@ -443,68 +478,57 @@ public class BoardState {
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
-        if (Main.useGameStateHash) {
-            hashNewPosition(oldRow, oldCol, newRow, newCol, true);
-        }
-        int boxNum = getBoxNumber(oldRow, oldCol);
-        boxCells[boxNum][0] = newRow;
-        boxCells[boxNum][1] = newCol;
+        //        if (Main.useGameStateHash) {
+        //            hashNewPosition(oldRow, oldCol, newRow, newCol, true);
+        //        }
+
         board[oldRow][oldCol] &= ~BOX;
         board[newRow][newCol] |= BOX;
         board[newRow][newCol] |= -16 & board[oldRow][oldCol];
         board[oldRow][oldCol] &= 15;
     }
 
-    private void hashNewPosition(int oldRow, int oldCol, int newRow, int newCol, boolean isBox) {
-        if (isBox) {
-            playerAndBoxesHashCells.remove(height * width + oldCol + oldRow * width);
-            playerAndBoxesHashCells.add(height * width + newCol + newRow * width);
-        }
-        else {
-            playerAndBoxesHashCells.remove(oldCol + oldRow * width);
-            playerAndBoxesHashCells.add(newCol + newRow * width);
-        }
-    }
-
     /*
      * Helper method that does not do error checking
      */
     private void movePlayer(int newRow, int newCol) {
-        if (Main.useGameStateHash) {
-            hashNewPosition(playerRow, playerCol, newRow, newCol, false);
-        }
+        //        if (Main.useGameStateHash) {
+        //            hashNewPosition(playerRow, playerCol, newRow, newCol, false);
+        //        }
         board[playerRow][playerCol] &= ~PLAYER;
         board[newRow][newCol] |= PLAYER;
         playerRow = newRow;
         playerCol = newCol;
     }
 
-    public void hashCurrentGameState(int depth) {
-        gameStateHash.put(new HashSet<Integer>(playerAndBoxesHashCells), depth);
-    }
 
-    public void clearHashTable() {
-        gameStateHash.clear();
-    }
-
-    public boolean isPreviousGameState(int currentDepth) {
-        Integer oldDepth = gameStateHash.get(playerAndBoxesHashCells);
-        if (oldDepth == null) {
-            return false;
-        } else if (oldDepth > currentDepth) {
-            hashCurrentGameState(currentDepth);
-            return false;
+    public boolean hashCurrentBoardState(int currentDepth, int currentIteration) {
+        boolean newState = false;
+        HashSet<Integer> boxAndPlayerSet = new HashSet<Integer>();
+        for (int hashValue : playerAndBoxesHashCells) {
+            boxAndPlayerSet.add(hashValue);
         }
-        else {
-            return true;
+        int[] cashedDepthInfo = gameStateHash.get(boxAndPlayerSet);
+        if (cashedDepthInfo == null) {
+            newState = true;
+        } else {
+            int minDepth = cashedDepthInfo[0];
+            int prevIteration = cashedDepthInfo[1];
+            if (minDepth > currentDepth || minDepth == currentDepth && currentIteration != prevIteration) {
+                newState = true;
+            }
         }
+        if (newState) {
+            gameStateHash.put(boxAndPlayerSet, new int[]{ currentDepth, currentIteration });
+        }
+        return newState;
     }
 
     // TODO This should be updated while moving (maybe)
     public int getBoardValue() {
         int res = 0;
         for (int box = 0; box < boxCnt; box++) {
-            if (matchedGoal[box] == -1) return INF;
+            if (matchedGoal[box] == -1) { return INF; }
             int boxR = boxCells[box][0];
             int boxC = boxCells[box][1];
             res += goalDist[boxR][boxC][matchedGoal[box]];
@@ -591,7 +615,18 @@ public class BoardState {
         }
     }
 
-    public int getBoxNumber(int row, int col){
+    public int getBoxNumber(int row, int col) {
         return board[row][col] >> 4;
     }
+
+
+    //    private void hashNewPosition(int oldRow, int oldCol, int newRow, int newCol, boolean isBox) {
+    //        if (isBox) {
+    //            playerAndBoxesHashCells.remove(height * width + oldCol + oldRow * width);
+    //            playerAndBoxesHashCells.add(height * width + newCol + newRow * width);
+    //        } else {
+    //            playerAndBoxesHashCells.remove(oldCol + oldRow * width);
+    //            playerAndBoxesHashCells.add(newCol + newRow * width);
+    //        }
+    //    }
 }

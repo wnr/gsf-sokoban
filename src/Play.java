@@ -49,7 +49,7 @@ public class Play {
             System.out.println("Found board!");
             System.out.println("===================================================");
         }
-        board.initializeGoalDistancesAndMapping();
+        board.setup();
         boardInteract(board);
     }
 
@@ -93,7 +93,7 @@ public class Play {
                             }
                             break;
                         case KeyEvent.VK_TAB:
-                            int[][] jumps = b.getPossibleMovePositions();
+                            int[][] jumps = b.getPossibleJumpPositions();
                             System.out.print("Possible jumps:");
                             for (int[] jump: jumps) {
                                 System.out.print(" (" + jump[0]+","+jump[1]+")");
