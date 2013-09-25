@@ -169,9 +169,10 @@ Tester.prototype.test = function(map, level, cb) {
       } catch(e) {
         self.failed++;
         self.exceptions.push({
-         test: 'Test ' + level,
-         err: 'Result: ' + result + '\nException: ' + e,
-         cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+	  level: parseInt(level, 10),
+	  test: 'Test ' + level,
+	  err: 'Result: ' + result + '\nException: ' + e,
+	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
        });
       }
     }
@@ -357,10 +358,10 @@ Walker.prototype.parseMap = function(map) {
     return e.split('');
   });
 
-  for(var x = 0; x < m.length; x++) {
-    var y = indexOfEither(m[x], '@+');
+  for(var y = 0; y < m.length; y++) {
+    var x = indexOfEither(m[y], '@+');
 
-    if(~y) {
+    if(~x) {
       this.player = new this.Position(x, y);
     }
   }
