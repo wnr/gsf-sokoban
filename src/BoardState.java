@@ -2,7 +2,7 @@ import java.util.*;
 
 public class BoardState {
 
-    public static final int PRIME = 83;
+    public static final int INF = 100000000;
 
     public static final char FREE_SPACE_CHAR = ' ';
     public static final char GOAL_CHAR = '.';
@@ -52,8 +52,11 @@ public class BoardState {
     private StackEntry               previousMove;
     public  int                      playerCnt;
     private int[][]                  board;
+    private int[][]                  boxCells;
     private int[][]                  goalCells;
+    private int[][][]                goalDist;
     private boolean[][]              trappingCells;
+    private int[]                    matchedGoal;
 
     private Set<Integer>              playerAndBoxesHashCells;
     private int[]                     playerAndBoxesHashCellsSimple;
@@ -68,6 +71,7 @@ public class BoardState {
         }
         board = new int[height][width];
         int row = 0;
+        List<int[]> tempBoxCells = new ArrayList<int[]>();
         List<int[]> tempGoalCells = new ArrayList<int[]>();
         List<Integer> tempBoxList = new ArrayList<Integer>();
         for (String line : lines) {
@@ -85,6 +89,7 @@ public class BoardState {
                 }
                 if (isBox(row, col)) {
                     board[row][col] |= boxCnt<<4;
+                    tempBoxCells.add(new int[]{row, col});
                     tempBoxList.add(row);
                     tempBoxList.add(col);
                     boxCnt++;
@@ -93,7 +98,6 @@ public class BoardState {
             }
             row++;
         }
-        goalCells = new int[tempGoalCells.size()][];
 
         if(Main.useGameStateHash){
 
@@ -113,38 +117,128 @@ public class BoardState {
             tempTest = new HashSet<Integer>(playerAndBoxesHashCells);
         }
 
-        for (int i = 0; i < tempGoalCells.size(); i++) {
+        boxCells = new int[tempBoxCells.size()][];
+        for (int i = 0; i < boxCells.length; i++) {
+            boxCells[i] = tempBoxCells.get(i);
+        }
+
+        goalCells = new int[tempGoalCells.size()][];
+        for (int i = 0; i < goalCells.length; i++) {
             goalCells[i] = tempGoalCells.get(i);
         }
-        setTrappingCells();
+//        setTrappingCells();
     }
 
-    private void setTrappingCells() {
-        trappingCells = new boolean[height][width];
-        for (int i = 0; i < height; i++) {
-            Arrays.fill(trappingCells[i], true);
-        }
-        for (int[] goal : goalCells) {
-            if (trappingCells[goal[0]][goal[1]]) {
-                traverseTrappingCells(goal[0], goal[1], 0);
+    public void initializeGoalDistancesAndMapping() {
+        goalDist = new int[height][width][goalCnt];
+        for (int r = 0; r < height; r++) {
+            for (int c = 0; c < width; c++) {
+                Arrays.fill(goalDist[r][c], INF);
             }
         }
-    }
-
-    private void traverseTrappingCells(int row, int col, int direction) {
-        int newRow = row + dr[direction];
-        int newCol = col + dc[direction];
-        if (!isWall(newRow, newCol) || isGoal(row, col)) {
-            trappingCells[row][col] = false;
-            for (int i = 0; i < 4; i++) {
-                newRow = row + dr[i];
-                newCol = col + dc[i];
-                if (trappingCells[newRow][newCol] && !isWall(newRow, newCol)){
-                    traverseTrappingCells(newRow, newCol, i);
+        for (int i = 0; i < goalCells.length; i++) {
+            int[] goal = goalCells[i];
+            goalDist[goal[0]][goal[1]][i] = 0;
+            LinkedList<int[]> q = new LinkedList<int[]>();
+            q.add(goal);
+            while (!q.isEmpty()) {
+                int[] p = q.removeFirst();
+                int r = p[0], c = p[1];
+                for (int dir = 0; dir < 4; dir++) {
+                    int nr = r + dr[dir];
+                    int nc = c + dc[dir];
+                    int d = goalDist[r][c][i] + 1;
+                    if (!isWall(nr, nc) && d < goalDist[nr][nc][i]) {
+                        int nr2 = nr + dr[dir];
+                        int nc2 = nc + dc[dir];
+                        if (!isWall(nr2, nc2)) {
+                            goalDist[nr][nc][i] = d;
+                            q.add(new int[]{nr, nc});
+                        }
+                    }
                 }
             }
         }
-     }
+        // Trapping cells
+        trappingCells = new boolean[height][width];
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                trappingCells[row][col] = true;
+                for (int goal = 0; goal < goalCnt; goal++) {
+                    trappingCells[row][col] &= goalDist[row][col][goal] == INF;
+                }
+            }
+        }
+        initializeBoxToGoalMapping();
+    }
+
+    // TODO method to update mapping for only one cell
+    public void initializeBoxToGoalMapping() {
+        PriorityQueue<int[]> leastCostPairs = new PriorityQueue<int[]>(goalCnt*boxCnt, new Comparator<int[]>() {
+            @Override
+            public int compare(int[] a, int[] b) {
+                if (a[2] < b[2]) return -1;
+                if (a[2] > b[2]) return 1;
+                return 0;
+            }
+        });
+        for (int box = 0; box < boxCnt; box++) {
+            int boxR = boxCells[box][0];
+            int boxC = boxCells[box][1];
+            for (int goal = 0; goal < goalCnt; goal++) {
+                if (goalDist[boxR][boxC][goal] < INF) {
+                    leastCostPairs.add(new int[]{box, goal, goalDist[boxR][boxC][goal]});
+                }
+            }
+        }
+        matchedGoal = new int[boxCnt];
+        int[] matchedBy = new int[goalCnt];
+        boolean[] visited = new boolean[goalCnt];
+        Arrays.fill(matchedBy, -1);
+        Arrays.fill(matchedGoal, -1);
+        while (!leastCostPairs.isEmpty()) {
+            int[] boxGoalPair = leastCostPairs.poll();
+            if (matchedGoal[boxGoalPair[0]] == -1 && matchedBy[boxGoalPair[1]] == -1) {
+                matchedGoal[boxGoalPair[0]] = boxGoalPair[1];
+                matchedBy[boxGoalPair[1]] = boxGoalPair[0];
+            }
+        }
+        for (int box = 0; box < boxCnt; box++) {
+            int boxR = boxCells[box][0];
+            int boxC = boxCells[box][1];
+            if (matchedGoal[box] == -1) {
+                Arrays.fill(visited, false);
+                for (int goal = 0; goal < goalCnt; goal++) {
+                    if (goalDist[boxR][boxC][goal] < INF) {
+                        if (match(goal, matchedBy, visited)) {
+                            matchedGoal[box] = goal;
+                            matchedBy[goal] = box;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean match(int goal, int[] matchedBy, boolean[] visited) {
+        if (matchedBy[goal] == -1) return true;
+        if (visited[goal]) return false;
+        visited[goal] = true;
+        int matchingBox = matchedBy[goal];
+        int boxR = boxCells[matchingBox][0];
+        int boxC = boxCells[matchingBox][1];
+        for (int newGoal = 0; newGoal < goalCnt; newGoal++) {
+            if (goalDist[boxR][boxC][newGoal] < INF) {
+                if (match(newGoal, matchedBy, visited)) {
+                    matchedBy[newGoal] = matchingBox;
+                    matchedGoal[matchingBox] = newGoal;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 
     public boolean performMove(int direction) {
         int newRow = playerRow + dr[direction];
@@ -343,20 +437,13 @@ public class BoardState {
         return sb.reverse().toString();
     }
 
-    public String temp(){
-        StringBuilder sb = new StringBuilder();
-        StackEntry tempVar = previousMove;
-        while (tempVar != null) {
-            sb.append(directionCharacters[tempVar.val&3]);
-            tempVar = tempVar.prev;
-        }
-        return sb.reverse().toString();
-    }
-
     /*
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
+        int boxNum = getBoxNumber(oldRow, oldCol);
+        boxCells[boxNum][0] = newRow;
+        boxCells[boxNum][1] = newCol;
         board[oldRow][oldCol] &= ~BOX;
         board[newRow][newCol] |= BOX;
         board[newRow][newCol] |= -16 & board[oldRow][oldCol];
@@ -414,6 +501,18 @@ public class BoardState {
         }else{
             return true;
         }
+    }
+
+    // TODO This should be updated while moving (maybe)
+    public int getBoardValue() {
+        int res = 0;
+        for (int box = 0; box < boxCnt; box++) {
+            if (matchedGoal[box] == -1) return INF;
+            int boxR = boxCells[box][0];
+            int boxC = boxCells[box][1];
+            res += goalDist[boxR][boxC][matchedGoal[box]];
+        }
+        return res;
     }
 
     public static int getOppositeDirection(int direction) {
@@ -494,39 +593,7 @@ public class BoardState {
         }
     }
 
-    public String aliveCellsToString() {
-        StringBuilder sb = new StringBuilder();
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                if(isWall(row,col)){
-                    sb.append(boardCharacters[board[row][col] & 15]);
-                }else if(isTrappingCell(row, col)){
-                    sb.append('x');
-                }else{
-                    sb.append(FREE_SPACE_CHAR);
-                }
-            }
-            sb.append('\n');
-        }
-        return sb.toString();
-    }
-
-    private int generateHashVectorOfTwo(int[] vector, boolean small){
-        if(small)
-            return vector[0] + PRIME*vector[1];
-        else
-            return vector[0]*PRIME + PRIME*PRIME*vector[1];
-    }
-
     public int getBoxNumber(int row, int col){
         return board[row][col] >> 4;
-    }
-
-    public int getPlayerCol() {
-        return playerCol;
-    }
-
-    public int getPlayerRow() {
-        return playerRow;
     }
 }

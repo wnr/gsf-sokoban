@@ -22,6 +22,7 @@ public class Main {
             }
         }
 
+
         if (args.length == 0) {
             ArrayList<String> lines = new ArrayList<String>();
 
@@ -56,11 +57,11 @@ public class Main {
         }
 
 
-
+        board.initializeGoalDistancesAndMapping();
 
         if(debug) System.out.println(board);
 
-        String path = iddfs(board);
+        String path = idAStar(board);
         if(debug) System.out.println("Path found: ");
         System.out.println(path);
         if(debug) System.out.println(isValidAnswer(board, path) ? "Path is VALID" : "Path is INVALID");
@@ -84,15 +85,16 @@ public class Main {
 
     private static String res;
     private static long visitedStates;
-    public static String iddfs(BoardState board) {
+    public static String idAStar(BoardState board) {
         long startTime = System.currentTimeMillis();
         res = null;
-        for (int maxDepth = START_MAX_DEPTH; maxDepth < END_MAX_DEPTH; maxDepth++) {
+        int startValue = board.getBoardValue();
+        for (int maxValue = startValue; maxValue < startValue + 30; maxValue += 2) {
             long relativeTime = System.currentTimeMillis();
             if(useGameStateHash) board.clearHashTable();
             visitedStates = 0;
-            if(debug) System.out.print("Trying depth " + maxDepth + "... ");
-            boolean done = dfs(board, 0, maxDepth);
+            if(debug) System.out.print("Trying maxValue " + maxValue + "... ");
+            boolean done = dfs(board, 0, maxValue);
             if(debug) {
                 System.out.print("visited " + visitedStates + " states. ");
                 System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTime));
@@ -102,13 +104,14 @@ public class Main {
         return null;
     }
 
-    private static boolean dfs(BoardState board, int depth, int maxDepth) {
+    private static boolean dfs(BoardState board, int depth, int maxValue) {
         visitedStates++;
         if (board.isBoardSolved()) {
             res = board.backtrackPath();
             return true;
         }
-        if (depth == maxDepth) return false;
+        board.initializeBoxToGoalMapping();
+        if (board.getBoardValue() > maxValue - depth) return false;
 
 //        if (depth == maxDepth - 1) {
 //            System.out.println(board);
@@ -127,7 +130,7 @@ public class Main {
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                 board.performMove(dir);
-                if (dfs(board, depth + 1, maxDepth)) return true;
+                if (dfs(board, depth + 1, maxValue)) return true;
                 board.reverseMove();
             }
         }
@@ -139,7 +142,7 @@ public class Main {
             for (int dir = 0; dir < 4; dir++) {
                 if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                     board.performMove(dir);
-                    if (dfs(board, depth + 1, maxDepth)) return true;
+                    if (dfs(board, depth + 1, maxValue)) return true;
                     board.reverseMove();
                 }
             }

@@ -18,6 +18,7 @@ import java.util.ArrayList;
 public class Play {
 
     public static void main(String[] args) throws IOException {
+        BoardState board = null;
         if (args.length == 0) {
             // Read board from stdin
             ArrayList<String> lines = new ArrayList<String>();
@@ -30,8 +31,7 @@ public class Play {
                 }
                 lines.add(line);
             }
-            BoardState board = new BoardState(lines);
-            boardInteract(board);
+            board = new BoardState(lines);
         } else if (args.length == 1) {
             int boardNum = -1;
             try {
@@ -41,15 +41,16 @@ public class Play {
                 System.exit(0);
             }
             System.out.println("Searching for board " + boardNum + "...");
-            BoardState board = BoardUtil.getTestBoard(boardNum);
+            board = BoardUtil.getTestBoard(boardNum);
             if (board == null) {
                 System.out.println("Invalid board number: " + boardNum);
                 System.exit(0);
             }
             System.out.println("Found board!");
             System.out.println("===================================================");
-            boardInteract(board);
         }
+        board.initializeGoalDistancesAndMapping();
+        boardInteract(board);
     }
 
 
@@ -110,12 +111,14 @@ public class Play {
                     if (move >= 0) {
                         goodMove = b.isGoodMove(move);
                         changed = b.performMove(move);
-                        if(b.movedBoxLastMove()){
+                        if(changed && b.movedBoxLastMove()){
+                            b.initializeBoxToGoalMapping();
                             System.out.println("Moved box number: " + b.getBoxIndexInDirection(b.directionLastMove()));
                         }
                     }
                     if (changed) {
                         System.out.println(b);
+                        System.out.println("Board value: " + b.getBoardValue());
                         if (!goodMove) {
                             System.out.println("Board now unsolvable :/");
                         }
