@@ -3,13 +3,9 @@ import java.lang.reflect.Array;
 import java.util.*;
 
 public class Main {
-    public static final int START_MAX_DEPTH = 1;
-    public static final int END_MAX_DEPTH = 30;
 
     public static boolean debug = false;
-    public static boolean useSimpleHash = false;
-    public static boolean useGameStateHash = true | useSimpleHash;
-
+    public static boolean useGameStateHash = true;
 
     public static void main(String[] args) throws IOException {
 

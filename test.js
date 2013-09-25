@@ -17,12 +17,12 @@ var ProgessBar = require('progress');
 //-----------------------------------------------------------------------------
 
 var config = {
-  tests: 20,
-  timeout: 10*1000
+  tests: Infinity,
+  timeout: 1*1000
 };
 
 config.tests = process.argv[2] || config.tests;
-config.timeout = process.argv[3] || config.timeout;
+config.timeout = parseInt(process.argv[3], 10)*1000 || config.timeout;
 
 printHeader('Google Search First Sokoban Test');
 
@@ -57,7 +57,7 @@ removeDir('temp', function(err) {
 /**
  * Tester
  */
-function Tester(maps, timeout) {
+ function Tester(maps, timeout) {
   if(!Array.isArray(maps)) {
     throw new Error('Maps data required');
   }
@@ -116,7 +116,7 @@ Tester.prototype.test = function(map, level, cb) {
 
   var self = this;
 
-  test(map, { timeout: this.timeout }, function(err, result) {
+  test(map, this.timeout, function(err, result) {
     self.running--;
     self.executed++;
 
@@ -135,10 +135,19 @@ Tester.prototype.test = function(map, level, cb) {
     if(result && !err) {
       var walker = new Walker(map);
 
-      if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
-        self.passed++;
-      } else {
+      try {
+        if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
+         self.passed++;
+        } else {
+         self.failed++;
+        }
+      } catch(e) {
         self.failed++;
+        self.exceptions.push({
+         test: 'Test ' + level,
+         err: 'Result: ' + result + '\nExceptio:' + e,
+         cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+       });
       }
     }
 
@@ -164,11 +173,9 @@ Tester.prototype.printExceptions = function() {
     printHeader('Exceptions', chalk.red);
 
     for(var i = 0; i < this.exceptions.length; i++) {
-      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' + chalk.yellow('Test with: ' + this.exceptions[i].cmd));
+      console.log(chalk.red(this.exceptions[i].test) + '\n' + this.exceptions[i].err + '\n' /* + chalk.yellow('Test with: ' + this.exceptions[i].cmd) */);
     }
   }
-
-  console.log('\n');
 };
 
 Tester.prototype.printResults = function() {
@@ -181,7 +188,7 @@ Tester.prototype.printResults = function() {
 /**
  * Walker
  */
-function Walker(map) {
+ function Walker(map) {
   if(map) {
     this.map = this.parseMap(map);
   }
@@ -217,8 +224,8 @@ Walker.prototype.parseMap = function(map) {
   var m = map.split('\n').filter(function(e) {
     return e.length > 0;
   }).map(function(e) {
-      return e.split('');
-    });
+    return e.split('');
+  });
 
   for(var x = 0; x < m.length; x++) {
     var y = indexOfEither(m[x], '@+');
@@ -341,10 +348,6 @@ Walker.prototype.moveBox = function(from, to) {
 // Helper functions
 //-----------------------------------------------------------------------------
 
-function test(map, options, cb) {
-  execute('echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main', options, cb);
-}
-
 function readTestData(file, limit, cb) {
   if(!cb) {
     throw new Error('Callback required.');
@@ -359,10 +362,11 @@ function readTestData(file, limit, cb) {
     }
 
     var result = data.split(/;LEVEL \d+/).splice(1, limit);
+    var levels = data.match(/\d+/g);
 
     for(var i = 0; i < result.length; i++) {
       result[i] = {
-        level: i+1,
+        level: levels[i],
         map: result[i].replace(/\r/g, '')
       };
     }
@@ -416,7 +420,12 @@ function compile(cb) {
   execute('Compiling', 'javac src/*.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
-function execute(job, cmd, options, cb) {
+function test(map, timeout, cb) {
+  var child = execute('java -cp temp/out.sokoban Main', timeout, cb);
+  child.stdin.write(map.replace(/^\n/, '') + ';\n');
+}
+
+function execute(job, cmd, timeout, cb) {
   if(!cmd) {
     cmd = job;
     job = null;
@@ -428,23 +437,27 @@ function execute(job, cmd, options, cb) {
     job = null;
   }
 
-  if(typeof cmd === 'object') {
-    cb = options;
-    options = cmd;
+  if(typeof cmd === 'number') {
+    cb = timeout;
+    timeout = cmd;
     cmd = job;
     job = null;
   }
 
-  if(typeof options === 'function') {
-    cb = options;
-    options = null;
+  if(typeof timeout === 'function') {
+    cb = timeout;
+    timeout = null;
   }
 
   if(job) {
     printJob(job);
   }
 
-  exec(cmd, options, function(err, stdout, stderr) {
+  if(!timeout) {
+    timeout = 0;
+  }
+
+  var child = exec(cmd, {timeout: timeout}, function(err, stdout, stderr) {
     if(err || stderr) {
       if(job) {
         printJobFailed();
@@ -466,4 +479,6 @@ function execute(job, cmd, options, cb) {
       cb(null, stdout);
     }
   });
+
+  return child;
 }
