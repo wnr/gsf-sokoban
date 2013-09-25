@@ -58,8 +58,8 @@ removeDir('temp', function(err) {
                   tester.printResults();
                   tester.printPassed();
                   tester.printTimeouts();
-                  tester.printExceptions();
                   tester.printVisual();
+                  tester.printExceptions();
                 });
               });
             }
@@ -141,11 +141,11 @@ Tester.prototype.test = function(map, level, cb) {
 
       if(err) {
         self.exceptions.push({
-	  level: parseInt(level, 10),
+          level: parseInt(level, 10),
           test: 'Test ' + level,
           err: err.message === 'Command failed: ' ? 'Timeout' : err.message,
-	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
-	  timeout: err.message === 'Command failed: '
+          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
+          timeout: err.message === 'Command failed: '
         });
       }
     }
@@ -155,9 +155,9 @@ Tester.prototype.test = function(map, level, cb) {
 
       try {
         if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
-	 self.passed.push(new self.TestResult(level, Date.now() - time));
+          self.passed.push(new self.TestResult(level, Date.now() - time));
         } else {
-         self.failed++;
+          self.failed++;
         }
       } catch(e) {
         self.failed++;
@@ -211,9 +211,17 @@ Tester.prototype.printExceptions = function(cmd, timeouts) {
 };
 
 Tester.prototype.printResults = function() {
+  var passedTime = 0;
+
+  for(var i = 0; i < this.passed.length; i++) {
+    if(this.passed[i].time) {
+      passedTime += this.passed[i].time;
+    }
+  }
+
   console.log('');
   console.log('Total:    ' + this.bar.total);
-  console.log('Passed:   ' + chalk.green(this.passed.length.toString()));
+  console.log('Passed:   ' + chalk.green(this.passed.length.toString() + (passedTime > 0 ? ' (' + passedTime/1000 + ' s)' : '')));
   console.log('Failed:   ' + chalk.red(this.failed.toString()));
   console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
 };
