@@ -32,10 +32,10 @@ public class BoardState {
     private static final int BOX_ON_GOAL    = BOX | GOAL;
     private static final int NOT_FREE       = WALL | BOX;
 
-    private static final int NOT_TUNNEL     = 0;
-    private static final int TUNNEL         = 1;
-    private static final int OPENING        = 3;
-    private static final int DEAD_END       = 5;
+    private static final int NOT_TUNNEL = 0;
+    private static final int TUNNEL     = 1;
+    private static final int OPENING    = 3;
+    private static final int DEAD_END   = 5;
 
     private char[] boardCharacters = { FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR };
     private static HashMap<Character, Integer> characterMapping;
@@ -68,7 +68,7 @@ public class BoardState {
     private boolean[][] trappingCells;
     private int[]       matchedGoal;
     private int[][]     possibleJumpPositions;
-
+    private int[][]     tunnels;
 
     private int[]                   playerAndBoxesHashCells;
     private HashMap<Integer, int[]> gameStateHash;
@@ -156,6 +156,19 @@ public class BoardState {
         int playerSection = boardSections[playerRow][playerCol];
         if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = width * height + playerSection; }
 
+        if ((tunnels[playerRow][playerCol] & TUNNEL) == TUNNEL) {
+            int dir = directionLastMove();
+
+            if (movedBoxLastMove() && isBoxInDirection(dir)) {
+                int boxRow = playerRow + dr[dir], boxCol = playerCol + dc[dir];
+                if ((tunnels[boxRow][boxCol] & TUNNEL) == TUNNEL) {
+                    if (!isGoal(boxRow, boxCol)) {
+                        possibleJumpPositions = new int[0][];
+                        return;
+                    }
+                }
+            }
+        }
         LinkedList<int[]> moves = new LinkedList<int[]>();
         for (int i = 0; i < boxCnt; i++) {
             int boxRow = boxCells[i][0];
@@ -179,23 +192,6 @@ public class BoardState {
             }
         }
 
-        //        for (int row = 0; row < height; row++) {
-        //            for (int col = 0; col < width; col++) {
-        //                if (row == playerRow && col == playerCol) { continue; }
-        //                if (boardSections[row][col] == playerSection) {
-        //                    for (int dir = 0; dir < 4; dir++) {
-        //                        int newRow = row + dr[dir], newCol = col + dc[dir];
-        //                        if (isBox(newRow, newCol)) {
-        //                            int newRow2 = newRow + dr[dir], newCol2 = newCol + dc[dir];
-        //                            if (isFree(newRow2, newCol2)) {
-        //                                moves.add(new int[]{ row, col });
-        //                                break;
-        //                            }
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
         possibleJumpPositions = new int[moves.size()][];
         int i = 0;
         for (int[] move : moves) {
@@ -226,6 +222,7 @@ public class BoardState {
     }
 
     public void setup() {
+        tunnels = computeTunnels();
         analyzeBoard();
         goalDist = new int[height][width][goalCnt];
         for (int r = 0; r < height; r++) {
@@ -275,23 +272,23 @@ public class BoardState {
         ArrayList<int[]> deads = new ArrayList<int[]>();
 
         //Iterate over board, but do not check outer rows or cols.
-        for(int i = 1; i < board.length-1; i++) {
-            for(int j = 1; j < board[i].length-1; j++) {
-                if((board[i][j] & WALL) == 0) {
-                    boolean u = (board[i-1][j] & WALL) == WALL;
-                    boolean d = (board[i+1][j] & WALL) == WALL;
-                    boolean l = (board[i][j-1] & WALL) == WALL;
-                    boolean r = (board[i][j+1] & WALL) == WALL;
+        for (int i = 1; i < board.length - 1; i++) {
+            for (int j = 1; j < board[i].length - 1; j++) {
+                if ((board[i][j] & WALL) == 0) {
+                    boolean u = (board[i - 1][j] & WALL) == WALL;
+                    boolean d = (board[i + 1][j] & WALL) == WALL;
+                    boolean l = (board[i][j - 1] & WALL) == WALL;
+                    boolean r = (board[i][j + 1] & WALL) == WALL;
                     boolean v = u && d;
                     boolean h = l && r;
                     boolean dead = (v && (l || h)) || (h && (u || d));
 
-                    if(v || h) {
+                    if (v || h) {
                         tunnels[i][j] = tunnels[i][j] | TUNNEL;
 
-                        if(dead) {
+                        if (dead) {
                             tunnels[i][j] = tunnels[i][j] | DEAD_END;
-                            int[] coord = {i,j};
+                            int[] coord = { i, j };
                             deads.add(coord);
                         }
                     }
@@ -299,7 +296,7 @@ public class BoardState {
             }
         }
 
-        for(int i = 0; i < deads.size(); i++) {
+        for (int i = 0; i < deads.size(); i++) {
             updateTunnels(tunnels, deads.get(i)[0], deads.get(i)[1]);
         }
 
@@ -307,13 +304,13 @@ public class BoardState {
     }
 
     private void updateTunnels(int[][] tunnels, int i, int j) {
-        if((tunnels[i][j] & DEAD_END) == DEAD_END) {
-            int[][] cells = {{i-1,j}, {i+1,j}, {i,j-1}, {i,j+1}};
+        if ((tunnels[i][j] & DEAD_END) == DEAD_END) {
+            int[][] cells = { { i - 1, j }, { i + 1, j }, { i, j - 1 }, { i, j + 1 } };
 
-            for(int dir = 0; dir < cells.length; dir++) {
+            for (int dir = 0; dir < cells.length; dir++) {
                 int cell = tunnels[cells[dir][0]][cells[dir][1]];
 
-                if((cell & TUNNEL) == TUNNEL && (cell & DEAD_END) != DEAD_END) {
+                if ((cell & TUNNEL) == TUNNEL && (cell & DEAD_END) != DEAD_END) {
                     tunnels[cells[dir][0]][cells[dir][1]] = cell | DEAD_END;
                     updateTunnels(tunnels, cells[dir][0], cells[dir][1]);
                 }
@@ -695,18 +692,16 @@ public class BoardState {
     public String toString() {
         int[][] tunnels = computeTunnels();
 
-	StringBuilder sb = new StringBuilder();
-	for (int row = 0; row < height; row++) {
-	    for (int col = 0; col < width; col++) {
-		if((tunnels[row][col] & DEAD_END) == DEAD_END) {
-		    sb.append("\033[41m");
-		} else if((tunnels[row][col] & TUNNEL) == TUNNEL) {
-		    sb.append("\033[43m");
-		}
-
+        StringBuilder sb = new StringBuilder();
+        for (int row = 0; row < height; row++) {
+            for (int col = 0; col < width; col++) {
+                if ((tunnels[row][col] & DEAD_END) == DEAD_END) {
+                    sb.append("\033[41m");
+                } else if ((tunnels[row][col] & TUNNEL) == TUNNEL) {
+                    sb.append("\033[43m");
+                }
                 sb.append(boardCharacters[board[row][col] & 15]);
-
-		if((tunnels[row][col] & TUNNEL) == TUNNEL) {
+                if ((tunnels[row][col] & TUNNEL) == TUNNEL) {
                     sb.append("\033[0m");
                 }
             }
