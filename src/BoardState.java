@@ -273,29 +273,27 @@ public class BoardState {
         int[][] tunnels = new int[height][width];
 
         //Iterate over board, but do not check outer rows or cols.
-	for(int i = 1; i < board.length-1; i++) {
-	    for(int j = 1; j < board[i].length-1; j++) {
-		if((board[i][j] & WALL) == 0) {
-		    boolean u = (board[i-1][j] & WALL) == WALL;
-		    boolean d = (board[i+1][j] & WALL) == WALL;
-		    boolean l = (board[i][j-1] & WALL) == WALL;
-		    boolean r = (board[i][j+1] & WALL) == WALL;
-		    boolean v = u && d;
-		    boolean h = l && r;
-		    boolean dead = (v && (l || h)) || (h && (u || d));
+        for(int i = 1; i < board.length-1; i++) {
+            for(int j = 1; j < board[i].length-1; j++) {
+                if((board[i][j] & WALL) == 0) {
+                    boolean u = (board[i-1][j] & WALL) == WALL;
+                    boolean d = (board[i+1][j] & WALL) == WALL;
+                    boolean l = (board[i][j-1] & WALL) == WALL;
+                    boolean r = (board[i][j+1] & WALL) == WALL;
+                    boolean v = u && d;
+                    boolean h = l && r;
+                    boolean dead = (v && (l || h)) || (h && (u || d));
 
-		    if(v || h) {
-			tunnels[i][j] = tunnels[i][j] | TUNNEL;
+                    if(v || h) {
+                        tunnels[i][j] = tunnels[i][j] | TUNNEL;
 
-			if(dead) {
-			    tunnels[i][j] = tunnels[i][j] | DEAD_END;
-			}
-		    }
-		}
-	    }
+                        if(dead) {
+                            tunnels[i][j] = tunnels[i][j] | DEAD_END;
+                        }
+                    }
+                }
+            }
         }
-
-
 
         return tunnels;
     }
