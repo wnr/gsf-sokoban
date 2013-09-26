@@ -152,23 +152,45 @@ public class BoardState {
         if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = width * height + playerSection; }
 
         LinkedList<int[]> moves = new LinkedList<int[]>();
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                if (row == playerRow && col == playerCol) { continue; }
-                if (boardSections[row][col] == playerSection) {
-                    for (int dir = 0; dir < 4; dir++) {
-                        int newRow = row + dr[dir], newCol = col + dc[dir];
-                        if (isBox(newRow, newCol)) {
-                            int newRow2 = newRow + dr[dir], newCol2 = newCol + dc[dir];
-                            if (isFree(newRow2, newCol2)) {
-                                moves.add(new int[]{ row, col });
-                                break;
-                            }
+        for (int i = 0; i < boxCnt; i++) {
+            int boxRow = boxCells[i][0];
+            int boxCol = boxCells[i][1];
+            for (int dir = 0; dir < 2; dir++) {
+                int newRow = boxRow + dr[dir], newCol = boxCol + dc[dir];
+                if (isFree(newRow, newCol)) {
+                    int newRow2 = boxRow + dr[dir + 2], newCol2 = boxCol + dc[dir + 2];
+                    if (isFree(newRow2, newCol2)) {
+
+                        if (playerSection == boardSections[newRow][newCol] && !(playerRow == newRow && playerCol == newCol) && boardSections[newRow][newCol] != -1) {
+                            moves.add(new int[]{ newRow, newCol });
+                            boardSections[newRow][newCol] = -1;
+                        }
+                        if (playerSection == boardSections[newRow2][newCol2] && !(playerRow == newRow2 && playerCol == newCol2) && boardSections[newRow2][newCol2] != -1) {
+                            moves.add(new int[]{ newRow2, newCol2 });
+                            boardSections[newRow2][newCol2] = -1;
                         }
                     }
                 }
             }
         }
+
+        //        for (int row = 0; row < height; row++) {
+        //            for (int col = 0; col < width; col++) {
+        //                if (row == playerRow && col == playerCol) { continue; }
+        //                if (boardSections[row][col] == playerSection) {
+        //                    for (int dir = 0; dir < 4; dir++) {
+        //                        int newRow = row + dr[dir], newCol = col + dc[dir];
+        //                        if (isBox(newRow, newCol)) {
+        //                            int newRow2 = newRow + dr[dir], newCol2 = newCol + dc[dir];
+        //                            if (isFree(newRow2, newCol2)) {
+        //                                moves.add(new int[]{ row, col });
+        //                                break;
+        //                            }
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //        }
         possibleJumpPositions = new int[moves.size()][];
         int i = 0;
         for (int[] move : moves) {
