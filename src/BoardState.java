@@ -188,7 +188,7 @@ public class BoardState {
         for (int row = 1; row < height - 1; row++) {
             for (int col = 1; col < width - 1; col++) {
                 if (isFree(row, col)) {
-                    if (boardSections[row][col] == 0) {
+                    if (boardSections[playerRow][playerCol] == 0 && boardSections[row][col] == 0) {
                         analyzeBoardDfs(row, col, sectionIndex, boardSections);
                         sectionIndex++;
                     }
