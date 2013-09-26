@@ -11,6 +11,7 @@ var exec = require('child_process').exec;
 var fs = require('fs');
 var os = require('os');
 var ProgessBar = require('progress');
+var path = require('path');
 
 //-----------------------------------------------------------------------------
 // Main execution point
@@ -42,7 +43,7 @@ removeDir('temp', function(err) {
   createDir('temp', function(err) {
     if(err) { throw err; }
 
-    createDir('temp/out.sokoban', function(err) {
+    createDir(path.normalize('temp/out.sokoban'), function(err) {
       if(err) { throw err; }
 
       compile(function(err) {
@@ -177,10 +178,10 @@ Tester.prototype.test = function(map, level, cb) {
       } catch(e) {
         self.failed++;
         self.exceptions.push({
-	  level: parseInt(level, 10),
-	  test: 'Test ' + level,
-	  err: 'Result: ' + result + '\nException: ' + e,
-	  cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+          level: parseInt(level, 10),
+          test: 'Test ' + level,
+          err: 'Result: ' + result + '\nException: ' + e,
+          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
        });
       }
     }
@@ -561,7 +562,8 @@ function createDir(dir, cb) {
 }
 
 function compile(cb) {
-  execute('Compiling', 'javac src/*.java -d temp/out.sokoban -encoding UTF-8', cb);
+  var src = path.normalize('src/');
+  execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardUtil.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
 function test(map, timeout, cb) {
