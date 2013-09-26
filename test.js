@@ -18,13 +18,21 @@ var ProgessBar = require('progress');
 
 var config = {
   tests: Infinity,
-  timeout: 11*1000
+  timeout: 11*1000,
+  cores: os.cpus().length
 };
 
 if(process.argv[2] !== undefined) {
   config.tests = parseInt(process.argv[2], 10);
 }
-config.timeout = parseInt(process.argv[3], 10)*1000 || config.timeout;
+
+if(process.argv[3] !== undefined) {
+  config.timeout = parseInt(process.argv[3], 10)*1000;
+}
+
+if(process.argv[4] !== undefined) {
+  config.cores = parseInt(process.argv[4], 10);
+}
 
 printHeader('Google Search First Sokoban Test');
 
@@ -43,7 +51,7 @@ removeDir('temp', function(err) {
         readTestData('samples.data', function(err, samples) {
           if(err) { throw err; }
 
-          var tester = new Tester(samples, config.timeout, true);
+          var tester = new Tester(samples, config.timeout, true, config.cores);
 
           printJob('Testing samples');
           tester.run(function done() {
@@ -60,7 +68,7 @@ removeDir('temp', function(err) {
               readTestData('test.data', config.tests, function(err, tests) {
                 if(err) { throw err; }
 
-                var tester = new Tester(tests, config.timeout);
+                var tester = new Tester(tests, config.timeout, false, config.cores);
                 tester.run(function done() {
                   tester.printResults();
                   tester.printPassed();
@@ -84,7 +92,7 @@ removeDir('temp', function(err) {
 /**
  * Tester
  */
- function Tester(maps, timeout, silent) {
+ function Tester(maps, timeout, silent, cpus) {
   if(!Array.isArray(maps)) {
     throw new Error('Maps data required');
   }
@@ -97,7 +105,7 @@ removeDir('temp', function(err) {
   this.running = 0;
   this.exceptions = [];
   this.elapsed = 0;
-  this.cpus = os.cpus().length;
+  this.cpus = cpus || 1;
   this.time = Date.now();
   this.timeout = timeout || 0;
   this.silent = silent || false;
@@ -114,7 +122,7 @@ removeDir('temp', function(err) {
 
 Tester.prototype.run = function(cb) {
   if(!this.silent) {
-    console.log('\n' + chalk.yellow(this.tests + ' tests to be executed by ' + this.cpus + ' cores.') + '\n');
+    console.log('\n' + chalk.yellow(this.tests + ' tests to be executed by ' + this.cpus + ' core' + (this.cpus === 1 ? '' : 's') + '.') + '\n');
   }
 
   for(var i = 0; i < this.cpus && i < this.tests; i++) {
