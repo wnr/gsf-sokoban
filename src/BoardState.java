@@ -2,7 +2,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -137,6 +136,8 @@ public class BoardState {
         mostUpLeftPos = playerPos;
         analyzeBoardDfs(playerPos, boardSections);
 
+        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxCnt] = mostUpLeftPos; }
+
         if (movedBoxLastMove()) {
             int dir = directionLastMove();
             int box = getBoxNumber(playerPos + dx[dir]);
@@ -180,7 +181,6 @@ public class BoardState {
         }
 
         possibleJumpPositions = new int[moves.size()];
-
         int i = 0;
         for (int move : moves) {
             possibleJumpPositions[i++] = move;
@@ -195,6 +195,7 @@ public class BoardState {
                 boxCells[boxNum] = pos;
                 if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = pos; }
                 boxIndex++;
+
             }
         }
     }
