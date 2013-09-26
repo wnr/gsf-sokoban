@@ -32,6 +32,10 @@ public class BoardState {
     private static final int BOX_ON_GOAL    = BOX | GOAL;
     private static final int NOT_FREE       = WALL | BOX;
 
+    private static final int NOT_TUNNEL     = 0;
+    private static final int TUNNEL         = 1;
+    private static final int OPENING        = 3;
+
     private char[] boardCharacters = { FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR };
     private static HashMap<Character, Integer> characterMapping;
 
@@ -272,11 +276,13 @@ public class BoardState {
             for(int j = 1; j < board[i].length-1; j++) {
                 if((board[i][j] & WALL) == 0) {
                     if(((board[i-1][j] & WALL) != 0 && (board[i+1][j] & WALL) != 0) || ((board[i][j-1] & WALL) != 0 && (board[i][j+1] & WALL) != 0)) {
-                        tunnels[i][j] = 1;
+			tunnels[i][j] = TUNNEL;
                     }
                 }
             }
         }
+
+
 
         return tunnels;
     }
@@ -658,13 +664,13 @@ public class BoardState {
         StringBuilder sb = new StringBuilder();
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
-                if(tunnels[row][col] == 1) {
+		if((tunnels[row][col] & TUNNEL) == TUNNEL) {
                     sb.append("\033[46m");
                 }
 
                 sb.append(boardCharacters[board[row][col] & 15]);
 
-                if(tunnels[row][col] == 1) {
+		if((tunnels[row][col] & TUNNEL) == TUNNEL) {
                     sb.append("\033[0m");
                 }
             }
