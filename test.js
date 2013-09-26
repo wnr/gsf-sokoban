@@ -170,7 +170,7 @@ Tester.prototype.test = function(map, level, cb) {
       var walker = new Walker(map);
 
       try {
-        if(walker.goByString(result.replace(/\n/g, '')).isSolved()) {
+        if(walker.goByString(result.replace(/\n|\r/g, '')).isSolved()) {
           self.passed.push(new self.TestResult(level, Date.now() - time));
         } else {
           self.failed++;
