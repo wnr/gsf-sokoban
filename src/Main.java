@@ -5,7 +5,6 @@ import java.util.*;
 public class Main {
 
     public static boolean debug            = false;
-    public static boolean useGameStateHash = true;
 
     public static void main(String[] args) throws IOException {
         BoardState board = null;
@@ -86,7 +85,7 @@ public class Main {
         long startTime = System.currentTimeMillis();
         res = null;
         int startValue = board.getBoardValue();
-        for (int maxValue = startValue; !debug || maxValue < startValue + 100; maxValue += 2) {
+        for (int maxValue = startValue; !debug || maxValue < startValue + 100; maxValue += 1) {
             long relativeTime = System.currentTimeMillis();
             visitedStates = 0;
             if (debug) { System.out.print("Trying maxValue " + maxValue + "... "); }
@@ -119,9 +118,7 @@ public class Main {
         //            }
         //        }
 
-        if (useGameStateHash) {
-            if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
-        }
+        if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
         // First try and push a box from where we stand
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {

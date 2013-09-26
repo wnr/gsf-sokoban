@@ -118,10 +118,8 @@ public class BoardState {
             }
         }
 
-        if (Main.useGameStateHash) {
             gameStateHash = new HashMap<Long, int[]>();
             playerAndBoxesHashCells = new int[boxCnt + 1];
-        }
 
         boxCells = new int[boxCnt];
         goalCells = new int[goalCnt];
@@ -136,7 +134,7 @@ public class BoardState {
         mostUpLeftPos = playerPos;
         analyzeBoardDfs(playerPos, boardSections);
 
-        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxCnt] = mostUpLeftPos; }
+        playerAndBoxesHashCells[boxCnt] = mostUpLeftPos;
 
         if (movedBoxLastMove()) {
             int dir = directionLastMove();
@@ -144,7 +142,7 @@ public class BoardState {
             updateMatchingForBox(box);
         }
 
-        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxCnt] = totalSize + mostUpLeftPos; }
+        playerAndBoxesHashCells[boxCnt] = totalSize + mostUpLeftPos;
 
         if ((tunnels[playerPos] & TUNNEL) == TUNNEL) {
             int dir = directionLastMove();
@@ -193,7 +191,7 @@ public class BoardState {
              if (isBox(pos)) {
                 int boxNum = getBoxNumber(pos);
                 boxCells[boxNum] = pos;
-                if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = pos; }
+                playerAndBoxesHashCells[boxIndex] = pos;
                 boxIndex++;
 
             }
