@@ -74,7 +74,6 @@ public class BoardState {
     private int[]                   playerAndBoxesHashCells;
     private HashMap<Integer, int[]> gameStateHash;
 
-
     public BoardState(List<String> lines) {
         height = lines.size();
         width = 0;
@@ -128,25 +127,8 @@ public class BoardState {
     }
 
     public void analyzeBoard() {
-        int[][] boardSections = new int[height][width];
-        int sectionIndex = 1;
-        int boxIndex = 0;
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-                if (isFree(row, col)) {
-                    if (boardSections[row][col] == 0) {
-                        analyzeBoardDfs(row, col, sectionIndex, boardSections);
-                        sectionIndex++;
-                    }
-                } else if (isBox(row, col)) {
-                    int boxNum = getBoxNumber(row, col);
-                    boxCells[boxNum][0] = row;
-                    boxCells[boxNum][1] = col;
-                    if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = col + width * row; }
-                    boxIndex++;
-                }
-            }
-        }
+        int boardSections[][] = new int[height][width];
+        int boxIndex = computeBoardSections(boardSections);
 
         if (movedBoxLastMove()) {
             int dir = directionLastMove();
@@ -198,6 +180,29 @@ public class BoardState {
         for (int[] move : moves) {
             possibleJumpPositions[i++] = move;
         }
+    }
+
+    private int computeBoardSections(int[][] boardSections) {
+        int sectionIndex = 1;
+        int boxIndex = 0;
+        for (int row = 1; row < height-1; row++) {
+            for (int col = 1; col < width-1; col++) {
+                if (isFree(row, col)) {
+                    if (boardSections[row][col] == 0) {
+                        analyzeBoardDfs(row, col, sectionIndex, boardSections);
+                        sectionIndex++;
+                    }
+                } else if (isBox(row, col)) {
+                    int boxNum = getBoxNumber(row, col);
+                    boxCells[boxNum][0] = row;
+                    boxCells[boxNum][1] = col;
+                    if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = col + width * row; }
+                    boxIndex++;
+                }
+            }
+        }
+
+        return boxIndex;
     }
 
     private void analyzeBoardDfs(int row, int col, int sectionIndex, int[][] boardSections) {
