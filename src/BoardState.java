@@ -242,6 +242,23 @@ public class BoardState {
         initializeBoxToGoalMapping();
     }
 
+    public int[][] computeTunnels() {
+        int[][] tunnels = new int[height][width];
+
+        //Iterate over board, but do not check outer rows or cols.
+        for(int i = 1; i < board.length-1; i++) {
+            for(int j = 1; j < board[i].length-1; j++) {
+                if((board[i][j] & WALL) == 0) {
+                    if(((board[i-1][j] & WALL) != 0 && (board[i+1][j] & WALL) != 0) || ((board[i][j-1] & WALL) != 0 && (board[i][j+1] & WALL) != 0)) {
+                        tunnels[i][j] = 1;
+                    }
+                }
+            }
+        }
+
+        return tunnels;
+    }
+
     // TODO method to update mapping for only one cell
     public void initializeBoxToGoalMapping() {
         PriorityQueue<int[]> leastCostPairs = new PriorityQueue<int[]>(goalCnt * boxCnt, new Comparator<int[]>() {
@@ -614,10 +631,20 @@ public class BoardState {
     }
 
     public String toString() {
+        int[][] tunnels = computeTunnels();
+
         StringBuilder sb = new StringBuilder();
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
+                if(tunnels[row][col] == 1) {
+                    sb.append("\033[46m");
+                }
+
                 sb.append(boardCharacters[board[row][col] & 15]);
+
+                if(tunnels[row][col] == 1) {
+                    sb.append("\033[0m");
+                }
             }
             sb.append('\n');
         }
