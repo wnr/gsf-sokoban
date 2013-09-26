@@ -2,6 +2,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -74,8 +75,10 @@ public class BoardState {
     private int[]     possibleJumpPositions;
     private int[]     tunnels;
 
-    private int[]                   playerAndBoxesHashCells;
+    private int[]                playerAndBoxesHashCells;
     private HashMap<Long, int[]> gameStateHash;
+
+    int mostUpLeftPos;
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -130,7 +133,9 @@ public class BoardState {
 
     public void analyzeBoard() {
         int boardSections[] = new int[totalSize];
-        int boxIndex = computeBoardSections(boardSections);
+        computeBoardSections();
+        mostUpLeftPos = playerPos;
+        analyzeBoardDfs(playerPos, boardSections);
 
         if (movedBoxLastMove()) {
             int dir = directionLastMove();
@@ -138,8 +143,7 @@ public class BoardState {
             updateMatchingForBox(box);
         }
 
-        int playerSection = boardSections[playerPos];
-        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = totalSize + playerSection; }
+        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxCnt] = totalSize + mostUpLeftPos; }
 
         if ((tunnels[playerPos] & TUNNEL) == TUNNEL) {
             int dir = directionLastMove();
@@ -162,11 +166,11 @@ public class BoardState {
                 if (isFree(newPos)) {
                     int newPos2 = boxPos + dx[dir + 2];
                     if (isFree(newPos2)) {
-                        if (playerSection == boardSections[newPos] && playerPos != newPos) {
+                        if (1 == boardSections[newPos] && playerPos != newPos) {
                             moves.add(newPos);
                             boardSections[newPos] = -1;
                         }
-                        if (playerSection == boardSections[newPos2] && playerPos != newPos2) {
+                        if (1 == boardSections[newPos2] && playerPos != newPos2) {
                             moves.add(newPos2);
                             boardSections[newPos2] = -1;
                         }
@@ -176,37 +180,34 @@ public class BoardState {
         }
 
         possibleJumpPositions = new int[moves.size()];
+
         int i = 0;
         for (int move : moves) {
             possibleJumpPositions[i++] = move;
         }
     }
 
-    private int computeBoardSections(int[] boardSections) {
-        int sectionIndex = 1;
+    private void computeBoardSections() {
         int boxIndex = 0;
         for (int pos = 0; pos < totalSize; pos++) {
-            if (isFree(pos)) {
-                if (boardSections[pos] == 0 && boardSections[playerPos] == 0) {
-                    analyzeBoardDfs(pos, sectionIndex, boardSections);
-                    sectionIndex++;
-                }
-            } else if (isBox(pos)) {
+             if (isBox(pos)) {
                 int boxNum = getBoxNumber(pos);
                 boxCells[boxNum] = pos;
                 if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = pos; }
                 boxIndex++;
             }
         }
-        return boxIndex;
     }
 
-    private void analyzeBoardDfs(int pos, int sectionIndex, int[] boardSections) {
-        boardSections[pos] = sectionIndex;
+    private void analyzeBoardDfs(int pos, int[] boardSections) {
+        boardSections[pos] = 1;
         for (int dir = 0; dir < 4; dir++) {
             int newPos = pos + dx[dir];
             if (isFree(newPos) && boardSections[newPos] == 0) {
-                analyzeBoardDfs(newPos, sectionIndex, boardSections);
+                if(newPos < mostUpLeftPos){
+                    mostUpLeftPos = newPos;
+                }
+                analyzeBoardDfs(newPos, boardSections);
             }
         }
     }
