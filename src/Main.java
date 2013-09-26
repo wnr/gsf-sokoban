@@ -107,7 +107,7 @@ public class Main {
             return true;
         }
         board.analyzeBoard();
-        int[][] jumps = board.getPossibleJumpPositions();
+        int[] jumps = board.getPossibleJumpPositions();
         if (board.getBoardValue() > maxValue - depth) { return false; }
 
         //        if (depth == maxDepth - 1) {
@@ -132,8 +132,8 @@ public class Main {
         }
 
         // Now try moving first and then push
-        for (int[] jump : jumps) {
-            board.performJump(jump[0], jump[1]);
+        for (int jump : jumps) {
+            board.performJump(jump);
             for (int dir = 0; dir < 4; dir++) {
                 if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                     board.performMove(dir);

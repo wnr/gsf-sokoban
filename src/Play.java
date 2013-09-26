@@ -93,10 +93,10 @@ public class Play {
                             }
                             break;
                         case KeyEvent.VK_TAB:
-                            int[][] jumps = b.getPossibleJumpPositions();
+                            int[] jumps = b.getPossibleJumpPositions();
                             System.out.print("Possible jumps:");
-                            for (int[] jump: jumps) {
-                                System.out.print(" (" + jump[0]+","+jump[1]+")");
+                            for (int jump: jumps) {
+                                System.out.print(" (" + jump + ")");
                             }
                             System.out.println();
                             break;
