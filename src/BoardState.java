@@ -36,6 +36,7 @@ public class BoardState {
     private static final int TUNNEL     = 1;
     private static final int OPENING    = 3;
     private static final int DEAD_END   = 5;
+    private static final int ROOM       = 8;
 
     private char[] boardCharacters = { FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR };
     private static HashMap<Character, Integer> characterMapping;
@@ -300,7 +301,69 @@ public class BoardState {
             updateTunnels(tunnels, deads.get(i)[0], deads.get(i)[1]);
         }
 
+        for (int i = 1; i < tunnels.length - 1; i++) {
+            for (int j = 1; j < tunnels[i].length - 1; j++) {
+                if ((tunnels[i][j] & TUNNEL) == TUNNEL && (tunnels[i][j] & DEAD_END) != DEAD_END) {
+                    computeRoom(tunnels, i, j);
+                }
+            }
+        }
+
         return tunnels;
+    }
+
+    private void computeRoom(int[][] tunnels, int i, int j) {
+        ArrayList<int[]> cells1 = new ArrayList<int[]>();
+        ArrayList<int[]> cells2 = new ArrayList<int[]>();
+
+        tunnels[i][j] = tunnels[i][j] | ROOM;
+
+        boolean room1 = false;
+        boolean room2 = false;
+
+        if(isWall(i, j-1)) {
+            //Test going up and down.
+            room1 = computeRoomDfs(tunnels, i-1, j, cells1);
+            room2 = computeRoomDfs(tunnels, i+1, j, cells2);
+        } else {
+            //Test going left and right.
+            room1 = computeRoomDfs(tunnels, i, j-1, cells1);
+            room2 = computeRoomDfs(tunnels, i, j+1, cells2);
+        }
+
+        if(!room1) {
+            for(int c = 0; c < cells1.size(); c++) {
+                tunnels[cells1.get(c)[0]][cells1.get(c)[1]] &= ~ROOM;
+            }
+        }
+        if(!room2) {
+            for(int c = 0; c < cells2.size(); c++) {
+                tunnels[cells2.get(c)[0]][cells2.get(c)[1]] &= ~ROOM;
+            }
+        }
+
+        tunnels[i][j] = tunnels[i][j] & ~ROOM;
+    }
+
+    private boolean computeRoomDfs(int[][] tunnels, int i, int j, ArrayList<int[]> cells) {
+        if((tunnels[i][j] & ROOM) == ROOM) {
+            return true;
+        }
+
+        if((tunnels[i][j] & TUNNEL) == TUNNEL && (tunnels[i][j] & DEAD_END) != DEAD_END) {
+            return false;
+        }
+
+        if(!isWall(i, j)) {
+            tunnels[i][j] = tunnels[i][j] | ROOM;
+
+            int[] coords = {i,j};
+            cells.add(coords);
+
+            return computeRoomDfs(tunnels, i-1, j, cells) && computeRoomDfs(tunnels, i+1, j, cells) && computeRoomDfs(tunnels, i, j-1, cells) && computeRoomDfs(tunnels, i, j+1, cells);
+        }
+
+        return true;
     }
 
     private void updateTunnels(int[][] tunnels, int i, int j) {
@@ -699,9 +762,11 @@ public class BoardState {
                     sb.append("\033[41m");
                 } else if ((tunnels[row][col] & TUNNEL) == TUNNEL) {
                     sb.append("\033[43m");
+                } else if((tunnels[row][col] & ROOM) == ROOM) {
+                    sb.append("\033[42m");
                 }
                 sb.append(boardCharacters[board[row][col] & 15]);
-                if ((tunnels[row][col] & TUNNEL) == TUNNEL) {
+                if ((tunnels[row][col] & TUNNEL) == TUNNEL || (tunnels[row][col] & ROOM) == ROOM) {
                     sb.append("\033[0m");
                 }
             }
