@@ -35,6 +35,7 @@ public class BoardState {
     private static final int NOT_TUNNEL     = 0;
     private static final int TUNNEL         = 1;
     private static final int OPENING        = 3;
+    private static final int DEAD_END       = 5;
 
     private char[] boardCharacters = { FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR };
     private static HashMap<Character, Integer> characterMapping;
@@ -272,14 +273,26 @@ public class BoardState {
         int[][] tunnels = new int[height][width];
 
         //Iterate over board, but do not check outer rows or cols.
-        for(int i = 1; i < board.length-1; i++) {
-            for(int j = 1; j < board[i].length-1; j++) {
-                if((board[i][j] & WALL) == 0) {
-                    if(((board[i-1][j] & WALL) != 0 && (board[i+1][j] & WALL) != 0) || ((board[i][j-1] & WALL) != 0 && (board[i][j+1] & WALL) != 0)) {
-			tunnels[i][j] = TUNNEL;
-                    }
-                }
-            }
+	for(int i = 1; i < board.length-1; i++) {
+	    for(int j = 1; j < board[i].length-1; j++) {
+		if((board[i][j] & WALL) == 0) {
+		    boolean u = (board[i-1][j] & WALL) == WALL;
+		    boolean d = (board[i+1][j] & WALL) == WALL;
+		    boolean l = (board[i][j-1] & WALL) == WALL;
+		    boolean r = (board[i][j+1] & WALL) == WALL;
+		    boolean v = u && d;
+		    boolean h = l && r;
+		    boolean dead = (v && (l || h)) || (h && (u || d));
+
+		    if(v || h) {
+			tunnels[i][j] = tunnels[i][j] | TUNNEL;
+
+			if(dead) {
+			    tunnels[i][j] = tunnels[i][j] | DEAD_END;
+			}
+		    }
+		}
+	    }
         }
 
 
@@ -661,12 +674,14 @@ public class BoardState {
     public String toString() {
         int[][] tunnels = computeTunnels();
 
-        StringBuilder sb = new StringBuilder();
-        for (int row = 0; row < height; row++) {
-            for (int col = 0; col < width; col++) {
-		if((tunnels[row][col] & TUNNEL) == TUNNEL) {
-                    sb.append("\033[46m");
-                }
+	StringBuilder sb = new StringBuilder();
+	for (int row = 0; row < height; row++) {
+	    for (int col = 0; col < width; col++) {
+		if((tunnels[row][col] & DEAD_END) == DEAD_END) {
+		    sb.append("\033[44m");
+		} else if((tunnels[row][col] & TUNNEL) == TUNNEL) {
+		    sb.append("\033[46m");
+		}
 
                 sb.append(boardCharacters[board[row][col] & 15]);
 
