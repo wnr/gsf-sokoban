@@ -272,6 +272,8 @@ public class BoardState {
     public int[][] computeTunnels() {
         int[][] tunnels = new int[height][width];
 
+        ArrayList<int[]> deads = new ArrayList<int[]>();
+
         //Iterate over board, but do not check outer rows or cols.
         for(int i = 1; i < board.length-1; i++) {
             for(int j = 1; j < board[i].length-1; j++) {
@@ -289,13 +291,34 @@ public class BoardState {
 
                         if(dead) {
                             tunnels[i][j] = tunnels[i][j] | DEAD_END;
+                            int[] coord = {i,j};
+                            deads.add(coord);
                         }
                     }
                 }
             }
         }
 
+        for(int i = 0; i < deads.size(); i++) {
+            updateTunnels(tunnels, deads.get(i)[0], deads.get(i)[1]);
+        }
+
         return tunnels;
+    }
+
+    private void updateTunnels(int[][] tunnels, int i, int j) {
+        if((tunnels[i][j] & DEAD_END) == DEAD_END) {
+            int[][] cells = {{i-1,j}, {i+1,j}, {i,j-1}, {i,j+1}};
+
+            for(int dir = 0; dir < cells.length; dir++) {
+                int cell = tunnels[cells[dir][0]][cells[dir][1]];
+
+                if((cell & TUNNEL) == TUNNEL && (cell & DEAD_END) != DEAD_END) {
+                    tunnels[cells[dir][0]][cells[dir][1]] = cell | DEAD_END;
+                    updateTunnels(tunnels, cells[dir][0], cells[dir][1]);
+                }
+            }
+        }
     }
 
     // TODO method to update mapping for only one cell
@@ -676,9 +699,9 @@ public class BoardState {
 	for (int row = 0; row < height; row++) {
 	    for (int col = 0; col < width; col++) {
 		if((tunnels[row][col] & DEAD_END) == DEAD_END) {
-		    sb.append("\033[44m");
+		    sb.append("\033[41m");
 		} else if((tunnels[row][col] & TUNNEL) == TUNNEL) {
-		    sb.append("\033[46m");
+		    sb.append("\033[43m");
 		}
 
                 sb.append(boardCharacters[board[row][col] & 15]);
