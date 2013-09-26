@@ -72,7 +72,7 @@ public class BoardState {
     private int[][]     tunnels;
 
     private int[]                   playerAndBoxesHashCells;
-    private HashMap<Integer, int[]> gameStateHash;
+    private HashMap<Long, int[]> gameStateHash;
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -115,7 +115,7 @@ public class BoardState {
         }
 
         if (Main.useGameStateHash) {
-            gameStateHash = new HashMap<Integer, int[]>();
+            gameStateHash = new HashMap<Long, int[]>();
             playerAndBoxesHashCells = new int[boxCnt + 1];
         }
 
@@ -144,7 +144,7 @@ public class BoardState {
 
             if (movedBoxLastMove() && isBoxInDirection(dir)) {
                 int boxRow = playerRow + dr[dir], boxCol = playerCol + dc[dir];
-                if ((tunnels[boxRow][boxCol] & TUNNEL) == TUNNEL) {
+                if ((tunnels[boxRow][boxCol] & TUNNEL) == TUNNEL || tunnels[boxRow][boxCol] == ROOM) {
                     if (!isGoal(boxRow, boxCol)) {
                         possibleJumpPositions = new int[0][];
                         return;
@@ -668,7 +668,7 @@ public class BoardState {
 
 
     public boolean hashCurrentBoardState(int currentDepth, int currentIteration) {
-        int hashCode = Arrays.hashCode(playerAndBoxesHashCells);
+        long hashCode = getHashCode(playerAndBoxesHashCells);
         int[] cashedDepthInfo = gameStateHash.get(hashCode);
         if (cashedDepthInfo != null) {
             int minDepth = cashedDepthInfo[0];
@@ -683,6 +683,14 @@ public class BoardState {
         }
         gameStateHash.put(hashCode, new int[]{ currentDepth, currentIteration });
         return true;
+    }
+
+    private long getHashCode(int[] array){
+        long hash = 0;
+        for(int i = 0; i<array.length; i++){
+            hash = hash*31 + array[i];
+        }
+        return hash;
     }
 
     // TODO This should be updated while moving (maybe)
