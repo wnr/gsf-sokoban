@@ -80,13 +80,13 @@ public class BoardState {
         for (String line : lines) {
             width = Math.max(width, line.length());
         }
-        board = new int[height*width];
+        board = new int[height * width];
         int row = 0;
         List<int[]> tempGoalCells = new ArrayList<int[]>();
         for (String line : lines) {
             int col = 0;
             for (char cell : line.toCharArray()) {
-                board[row*width + col] = characterMapping.get(cell);
+                board[row * width + col] = characterMapping.get(cell);
                 if (isPlayer(row, col)) {
                     playerRow = row;
                     playerCol = col;
@@ -96,7 +96,7 @@ public class BoardState {
                     goalCnt++;
                 }
                 if (isBox(row, col)) {
-                    board[row*width + col] |= boxCnt << 4;
+                    board[row * width + col] |= boxCnt << 4;
                     boxCnt++;
                 }
                 col++;
@@ -109,7 +109,7 @@ public class BoardState {
         for (row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
                 if (!isWall(row, col) && !visited[row][col]) {
-                    board[row*width + col] = WALL;
+                    board[row * width + col] = WALL;
                 }
             }
         }
@@ -185,8 +185,8 @@ public class BoardState {
     private int computeBoardSections(int[][] boardSections) {
         int sectionIndex = 1;
         int boxIndex = 0;
-        for (int row = 1; row < height-1; row++) {
-            for (int col = 1; col < width-1; col++) {
+        for (int row = 1; row < height - 1; row++) {
+            for (int col = 1; col < width - 1; col++) {
                 if (isFree(row, col)) {
                     if (boardSections[row][col] == 0) {
                         analyzeBoardDfs(row, col, sectionIndex, boardSections);
@@ -228,7 +228,7 @@ public class BoardState {
     }
 
     public void setup() {
-        tunnels = computeTunnels();
+        computeTunnels();
         analyzeBoard();
         goalDist = new int[height][width][goalCnt];
         for (int r = 0; r < height; r++) {
@@ -272,19 +272,19 @@ public class BoardState {
         initializeBoxToGoalMapping();
     }
 
-    public int[][] computeTunnels() {
-        int[][] tunnels = new int[height][width];
+    public void computeTunnels() {
+        tunnels = new int[height][width];
 
         ArrayList<int[]> deads = new ArrayList<int[]>();
 
         //Iterate over board, but do not check outer rows or cols.
         for (int i = 1; i < height - 1; i++) {
             for (int j = 1; j < width - 1; j++) {
-                if ((board[i*width + j] & WALL) == 0) {
-                    boolean u = (board[(i - 1)*width + j] & WALL) == WALL;
-                    boolean d = (board[(i + 1)*width + j] & WALL) == WALL;
-                    boolean l = (board[i*width + j - 1] & WALL) == WALL;
-                    boolean r = (board[i*width + j + 1] & WALL) == WALL;
+                if ((board[i * width + j] & WALL) == 0) {
+                    boolean u = (board[(i - 1) * width + j] & WALL) == WALL;
+                    boolean d = (board[(i + 1) * width + j] & WALL) == WALL;
+                    boolean l = (board[i * width + j - 1] & WALL) == WALL;
+                    boolean r = (board[i * width + j + 1] & WALL) == WALL;
                     boolean v = u && d;
                     boolean h = l && r;
                     boolean dead = (v && (l || h)) || (h && (u || d));
@@ -313,8 +313,6 @@ public class BoardState {
                 }
             }
         }
-
-        return tunnels;
     }
 
     private void computeRoom(int[][] tunnels, int i, int j) {
@@ -326,23 +324,23 @@ public class BoardState {
         boolean room1 = false;
         boolean room2 = false;
 
-        if(isWall(i, j-1)) {
+        if (isWall(i, j - 1)) {
             //Test going up and down.
-            room1 = computeRoomDfs(tunnels, i-1, j, cells1);
-            room2 = computeRoomDfs(tunnels, i+1, j, cells2);
+            room1 = computeRoomDfs(tunnels, i - 1, j, cells1);
+            room2 = computeRoomDfs(tunnels, i + 1, j, cells2);
         } else {
             //Test going left and right.
-            room1 = computeRoomDfs(tunnels, i, j-1, cells1);
-            room2 = computeRoomDfs(tunnels, i, j+1, cells2);
+            room1 = computeRoomDfs(tunnels, i, j - 1, cells1);
+            room2 = computeRoomDfs(tunnels, i, j + 1, cells2);
         }
 
-        if(!room1) {
-            for(int c = 0; c < cells1.size(); c++) {
+        if (!room1) {
+            for (int c = 0; c < cells1.size(); c++) {
                 tunnels[cells1.get(c)[0]][cells1.get(c)[1]] &= ~ROOM;
             }
         }
-        if(!room2) {
-            for(int c = 0; c < cells2.size(); c++) {
+        if (!room2) {
+            for (int c = 0; c < cells2.size(); c++) {
                 tunnels[cells2.get(c)[0]][cells2.get(c)[1]] &= ~ROOM;
             }
         }
@@ -351,21 +349,21 @@ public class BoardState {
     }
 
     private boolean computeRoomDfs(int[][] tunnels, int i, int j, ArrayList<int[]> cells) {
-        if((tunnels[i][j] & ROOM) == ROOM) {
+        if ((tunnels[i][j] & ROOM) == ROOM) {
             return true;
         }
 
-        if((tunnels[i][j] & TUNNEL) == TUNNEL && (tunnels[i][j] & DEAD_END) != DEAD_END) {
+        if ((tunnels[i][j] & TUNNEL) == TUNNEL && (tunnels[i][j] & DEAD_END) != DEAD_END) {
             return false;
         }
 
-        if(!isWall(i, j)) {
+        if (!isWall(i, j)) {
             tunnels[i][j] = tunnels[i][j] | ROOM;
 
-            int[] coords = {i,j};
+            int[] coords = { i, j };
             cells.add(coords);
 
-            return computeRoomDfs(tunnels, i-1, j, cells) && computeRoomDfs(tunnels, i+1, j, cells) && computeRoomDfs(tunnels, i, j-1, cells) && computeRoomDfs(tunnels, i, j+1, cells);
+            return computeRoomDfs(tunnels, i - 1, j, cells) && computeRoomDfs(tunnels, i + 1, j, cells) && computeRoomDfs(tunnels, i, j - 1, cells) && computeRoomDfs(tunnels, i, j + 1, cells);
         }
 
         return true;
@@ -542,7 +540,7 @@ public class BoardState {
         for (int rowDiff = 0; rowDiff < 2; rowDiff++) {
             for (int colDiff = 0; colDiff < 2; colDiff++) {
                 if (isFree(row + rowDiff, col + colDiff)) { return true; }
-                unmatchedBox |= (board[(row + rowDiff)*width + col + colDiff] & 15) == BOX;
+                unmatchedBox |= (board[(row + rowDiff) * width + col + colDiff] & 15) == BOX;
             }
         }
         return !unmatchedBox;
@@ -652,18 +650,18 @@ public class BoardState {
      * Helper method that does not do error checking
      */
     private void moveBox(int oldRow, int oldCol, int newRow, int newCol) {
-        board[oldRow*width + oldCol] &= ~BOX;
-        board[newRow*width + newCol] |= BOX;
-        board[newRow*width + newCol] |= -16 & board[oldRow*width + oldCol];
-        board[oldRow*width + oldCol] &= 15;
+        board[oldRow * width + oldCol] &= ~BOX;
+        board[newRow * width + newCol] |= BOX;
+        board[newRow * width + newCol] |= -16 & board[oldRow * width + oldCol];
+        board[oldRow * width + oldCol] &= 15;
     }
 
     /*
      * Helper method that does not do error checking
      */
     private void movePlayer(int newRow, int newCol) {
-        board[playerRow*width + playerCol] &= ~PLAYER;
-        board[newRow*width + newCol] |= PLAYER;
+        board[playerRow * width + playerCol] &= ~PLAYER;
+        board[newRow * width + newCol] |= PLAYER;
         playerRow = newRow;
         playerCol = newCol;
     }
@@ -708,15 +706,15 @@ public class BoardState {
     }
 
     public boolean isWall(int row, int col) {
-        return board[row*width + col] == WALL;
+        return board[row * width + col] == WALL;
     }
 
     public boolean isGoal(int row, int col) {
-        return (board[row*width + col] & GOAL) != 0;
+        return (board[row * width + col] & GOAL) != 0;
     }
 
     public boolean isBox(int row, int col) {
-        return (board[row*width + col] & BOX) != 0;
+        return (board[row * width + col] & BOX) != 0;
     }
 
     public boolean isBoxInDirection(int direction) {
@@ -728,17 +726,17 @@ public class BoardState {
     }
 
     public boolean isPlayer(int row, int col) {
-        return (board[row*width + col] & PLAYER) != 0;
+        return (board[row * width + col] & PLAYER) != 0;
     }
 
     public boolean isFree(int row, int col) {
-        return (board[row*width + col] & NOT_FREE) == 0;
+        return (board[row * width + col] & NOT_FREE) == 0;
     }
 
     // TODO this should be updated while moving
     public boolean isBoardSolved() {
         for (int[] goal : goalCells) {
-            if (!((board[goal[0]*width + goal[1]] & 15) == BOX_ON_GOAL)) {
+            if (!((board[goal[0] * width + goal[1]] & 15) == BOX_ON_GOAL)) {
                 return false;
             }
         }
@@ -758,8 +756,6 @@ public class BoardState {
     }
 
     public String toString() {
-        int[][] tunnels = computeTunnels();
-
         StringBuilder sb = new StringBuilder();
         for (int row = 0; row < height; row++) {
             for (int col = 0; col < width; col++) {
@@ -767,10 +763,10 @@ public class BoardState {
                     sb.append("\033[41m");
                 } else if ((tunnels[row][col] & TUNNEL) == TUNNEL) {
                     sb.append("\033[43m");
-                } else if((tunnels[row][col] & ROOM) == ROOM) {
+                } else if ((tunnels[row][col] & ROOM) == ROOM) {
                     sb.append("\033[42m");
                 }
-                sb.append(boardCharacters[board[row*width + col] & 15]);
+                sb.append(boardCharacters[board[row * width + col] & 15]);
                 if ((tunnels[row][col] & TUNNEL) == TUNNEL || (tunnels[row][col] & ROOM) == ROOM) {
                     sb.append("\033[0m");
                 }
@@ -791,6 +787,6 @@ public class BoardState {
     }
 
     public int getBoxNumber(int row, int col) {
-        return board[row*width + col] >> 4;
+        return board[row * width + col] >> 4;
     }
 }
