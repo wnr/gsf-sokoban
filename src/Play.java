@@ -95,8 +95,12 @@ public class Play {
                         case KeyEvent.VK_TAB:
                             int[] jumps = b.getPossibleJumpPositions();
                             System.out.print("Possible jumps:");
-                            for (int jump: jumps) {
-                                System.out.print(" (" + jump + ")");
+                            if (jumps == null) {
+                                System.out.print(jumps);
+                            } else {
+                                for (int jump: jumps) {
+                                    System.out.print(" (" + jump + ")");
+                                }
                             }
                             System.out.println();
                             break;
@@ -117,8 +121,9 @@ public class Play {
                         }
                     }
                     if (changed) {
-                        b.analyzeBoard();
+                        b.analyzeBoard(false);
                         System.out.println(b);
+                        System.out.println(b.temporaryWallsToString());
                         System.out.println("Board value: " + b.getBoardValue());
                         if (!goodMove) {
                             System.out.println("Board now unsolvable :/");

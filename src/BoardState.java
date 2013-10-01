@@ -70,9 +70,17 @@ public class BoardState {
     private int[]     goalCells;
     private int[][]   goalDist;
     private boolean[] trappingCells;
+    private boolean[] temporaryWall;
     private int[]       matchedGoal;
+    private int[]       matchedBox;
     private int[]     possibleJumpPositions;
     private int[]     tunnels;
+    private int[]       goalsInPrioOrder;
+    private int[]       prioForGoal;
+    private int         movedBoxesCnt;
+    private int         extraScore;
+
+    // TODO Add method moveBoxToGoalIfPossible, needs changes in reverseMove
 
     private int[]                   playerAndBoxesHashCells;
     private HashMap<Long, int[]> gameStateHash;
@@ -88,6 +96,7 @@ public class BoardState {
         board = new int[totalSize];
         int row = 0;
         List<Integer> tempGoalCells = new ArrayList<Integer>();
+        List<Integer> tempBoxCells = new ArrayList<Integer>();
         for (String line : lines) {
             int col = 0;
             for (char cell : line.toCharArray()) {
@@ -100,6 +109,7 @@ public class BoardState {
                     goalCnt++;
                 }
                 if (isBox(row * width + col)) {
+                    tempBoxCells.add(row * width + col);
                     board[row * width + col] |= boxCnt << 4;
                     boxCnt++;
                 }
@@ -123,23 +133,72 @@ public class BoardState {
 
         boxCells = new int[boxCnt];
         goalCells = new int[goalCnt];
+        for (int i = 0; i < boxCells.length; i++) {
+            boxCells[i] = tempBoxCells.get(i);
+        }
         for (int i = 0; i < goalCells.length; i++) {
             goalCells[i] = tempGoalCells.get(i);
         }
+        movedBoxesCnt = 0;
     }
 
-    public void analyzeBoard() {
+    public void analyzeBoard(boolean aggressive) {
         int boardSections[] = new int[totalSize];
-        int boxIndex = computeBoardSections(boardSections);
+        int sectionCnt = computeBoardSections(boardSections);
 
+        int lastMovedBoxIndex = -1;
+        int lastMovedBoxPos = -1;
         if (movedBoxLastMove()) {
             int dir = directionLastMove();
-            int box = getBoxNumber(playerPos + dx[dir]);
-            updateMatchingForBox(box);
+            lastMovedBoxPos = playerPos + dx[dir];
+            lastMovedBoxIndex = getBoxNumber(lastMovedBoxPos);
+
+            addTemporaryWallsDfs(lastMovedBoxPos);
+            updateMatchingForBox(lastMovedBoxIndex);
+
+            if (temporaryWall[lastMovedBoxPos]) {
+                if (!checkIfGoalsStillReachable()) {
+                    possibleJumpPositions = null;
+                    return;
+                }
+            }
         }
 
+        extraScore = 0;
+        int[] cellCosts = computeCellCosts();
+        boolean[] usedSection = new boolean[sectionCnt];
+        for (int box = 0; box < boxCnt; box++) {
+            int boxPos = boxCells[box];
+            int goal = matchedGoal[box];
+            if (isGoal(boxPos)) continue;
+            int bestCost = INF, bestPos = -1;
+            for (int dir = 0; dir < 2; dir++) {
+                int newPos = boxPos + dx[dir];
+                int oppPos = boxPos + dx[dir + 2];
+                if (!isWallOrTemporaryWall(newPos) && !isWallOrTemporaryWall(oppPos)) {
+                    if (cellCosts[oppPos] < INF && goalDist[newPos][goal] < bestCost) {
+                        bestCost = goalDist[newPos][goal];
+                        bestPos = oppPos;
+                    }
+                    if (cellCosts[newPos] < INF && goalDist[oppPos][goal] < bestCost) {
+                        bestCost = goalDist[oppPos][goal];
+                        bestPos = newPos;
+                    }
+                }
+            }
+            if (bestPos != -1) {
+                if (!usedSection[boardSections[bestPos]]) {
+                    usedSection[boardSections[bestPos]] = true;
+                    extraScore += cellCosts[bestPos];
+                }
+            } else {
+                extraScore += INF;
+            }
+        }
+//        System.out.println("Extrascore: " + extraScore);
+
         int playerSection = boardSections[playerPos];
-        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = totalSize + playerSection; }
+        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxCnt] = totalSize + playerSection; }
 
         if ((tunnels[playerPos] & TUNNEL) == TUNNEL) {
             int dir = directionLastMove();
@@ -155,8 +214,11 @@ public class BoardState {
             }
         }
         LinkedList<Integer> moves = new LinkedList<Integer>();
-        for (int i = 0; i < boxCnt; i++) {
-            int boxPos = boxCells[i];
+        for (int i = 0; i < goalCnt; i++) {
+            int goal = goalsInPrioOrder[i];
+            int box = matchedBox[goal];
+            int boxPos = boxCells[box];
+            if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && goalDist[boxCells[lastMovedBoxIndex]][matchedGoal[lastMovedBoxIndex]] != 0) continue;
             for (int dir = 0; dir < 2; dir++) {
                 int newPos = boxPos + dx[dir];
                 if (isFree(newPos)) {
@@ -182,6 +244,33 @@ public class BoardState {
         }
     }
 
+    private boolean checkIfGoalsStillReachable() {
+        boolean[] reachable = new boolean[totalSize];
+        for (int box = 0; box < boxCnt; box++) {
+            int boxPos = boxCells[box];
+            if (!reachable[boxPos]) {
+                checkIfGoalsStillReachableDfs(boxPos, reachable);
+            }
+        }
+        for (int goal = 0; goal < goalCnt; goal++) {
+            if (!reachable[goalCells[goal]]) return false;
+        }
+        return true;
+    }
+
+    private void checkIfGoalsStillReachableDfs(int pos, boolean[] visited) {
+        visited[pos] = true;
+        for (int dir = 0; dir < 4; dir++) {
+            int newPos = pos + dx[dir];
+            if (!isWallOrTemporaryWall(newPos) && !visited[newPos]) {
+                int oppPos = pos + dx[getOppositeDirection(dir)];
+                if (!isWallOrTemporaryWall(oppPos)) {
+                    checkIfGoalsStillReachableDfs(newPos, visited);
+                }
+            }
+        }
+    }
+
     private int computeBoardSections(int[] boardSections) {
         int sectionIndex = 1;
         int boxIndex = 0;
@@ -198,7 +287,7 @@ public class BoardState {
                 boxIndex++;
             }
         }
-        return boxIndex;
+        return sectionIndex;
     }
 
     private void analyzeBoardDfs(int pos, int sectionIndex, int[] boardSections) {
@@ -222,8 +311,6 @@ public class BoardState {
     }
 
     public void setup() {
-        computeTunnels();
-        analyzeBoard();
         goalDist = new int[totalSize][goalCnt];
         for (int pos = 0; pos < totalSize; pos++) {
             Arrays.fill(goalDist[pos], INF);
@@ -256,7 +343,72 @@ public class BoardState {
                 trappingCells[pos] &= goalDist[pos][goal] == INF;
             }
         }
+        temporaryWall = new boolean[totalSize];
+        for (int pos = 0; pos < totalSize; pos++) {
+            if (isBox(pos) && !temporaryWall[pos]) {
+                addTemporaryWallsDfs(pos);
+            }
+        }
+
+        computeTunnels();
         initializeBoxToGoalMapping();
+        analyzeBoard(false);
+    }
+
+    private int[] computeCellCosts() {
+        int[] cost = new int[totalSize*5];
+        for (int i = 0; i < cost.length; i++) cost[i] = INF;
+        PriorityQueue<int[]> q = new PriorityQueue<int[]>(totalSize, new Comparator<int[]>() {
+            @Override
+            public int compare(int[] a, int[] b) {
+                if (a[1] < b[1]) return -1;
+                if (a[1] > b[1]) return 1;
+                return 0;
+            }
+        });
+        q.add(new int[] {playerPos, 0, 4});
+        cost[5*playerPos + 4] = 0;
+        while (!q.isEmpty()) {
+            int[] state = q.poll();
+            int pos = state[0], c = state[1], forbiddenDir = state[2];
+            if (cost[5*pos + forbiddenDir] < c) continue;
+            for (int dir = 0; dir < 4; dir++) {
+                if (dir == forbiddenDir) continue;
+                int pos2 = pos + dx[dir];
+                if (isFree(pos2)) {
+                    if (c < cost[5*pos2 + 4]) {
+                        cost[5*pos2 + 4] = c;
+                        q.add(new int[] {pos2, c, 4});
+                    }
+                } else if (isBox(pos2)) {
+                    int pos3 = pos2 + dx[dir];
+                    if (isFree(pos3) && !trappingCells[pos3]) {
+                        int goal = matchedGoal[getBoxNumber(pos2)];
+                        int newCost = c + 1 + goalDist[pos3][goal] - goalDist[pos2][goal];
+                        if (newCost < cost[5*pos2 + dir]) {
+                            cost[5*pos2 + dir] = newCost;
+                            q.add(new int[] {pos2, newCost, dir});
+                        }
+                        int pos4 = pos3 + dx[dir];
+                        if (isFree(pos4) && !trappingCells[pos4]) {
+                            newCost = c + 2 + goalDist[pos4][goal] - goalDist[pos2][goal];
+                            if (newCost < cost[5*pos3 + 4]) {
+                                cost[5*pos3 + 4] = newCost;
+                                q.add(new int[] {pos3, newCost, 4});
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        int[] res = new int[totalSize];
+        for (int pos = 0; pos < totalSize; pos++) {
+            res[pos] = cost[5*pos];
+            for (int i = 1; i < 5; i++) {
+                res[pos] = Math.min(res[pos], cost[5*pos + i]);
+            }
+        }
+        return res;
     }
 
     public void computeTunnels() {
@@ -298,6 +450,59 @@ public class BoardState {
                 computeRoom(pos);
             }
         }
+    }
+
+    private void addTemporaryWallsDfs(int pos) {
+        if (checkIfTemporaryWall(pos)) {
+            temporaryWall[pos] = true;
+            for (int dir = 0; dir < 4; dir++) {
+                int newPos = pos + dx[dir];
+                if (isBox(newPos) && !temporaryWall[newPos]) {
+                    addTemporaryWallsDfs(newPos);
+                }
+            }
+        }
+    }
+
+    private void removeTemporaryWallsDfs(int pos) {
+        if (!checkIfTemporaryWall(pos)) {
+            temporaryWall[pos] = false;
+            for (int dir = 0; dir < 4; dir++) {
+                int newPos = pos + dx[dir];
+                if (isBox(newPos) && temporaryWall[newPos]) {
+                    removeTemporaryWallsDfs(newPos);
+                }
+            }
+        }
+    }
+
+    private boolean checkIfTemporaryWall(int pos) {
+        if (!isBox(pos)) return false;
+        if (isBlockedRectangle(pos) || isBlockedRectangle(pos - 1) || isBlockedRectangle(pos - width) || isBlockedRectangle(pos - width - 1)) {
+            return true;
+        }
+        int blockedSides = 0;
+        for (int dir = 0; dir < 2; dir++) {
+            int oppDir = dir + 2;
+            if (isWallOrTemporaryWall(pos + dx[dir]) || isWallOrTemporaryWall(pos + dx[oppDir])) {
+                blockedSides++;
+                int dir2 = dir + 1;
+                int oppDir2 = (dir2 + 2)&3;
+                int otherPos = pos + dx[dir2];
+                if (isBox(otherPos) && (isWallOrTemporaryWall(otherPos + dx[dir]) || isWallOrTemporaryWall(otherPos + dx[oppDir]))) {
+                    return true;
+                }
+                otherPos = pos + dx[oppDir2];
+                if (isBox(otherPos) && (isWallOrTemporaryWall(otherPos + dx[dir]) || isWallOrTemporaryWall(otherPos + dx[oppDir]))) {
+                    return true;
+                }
+            }
+        }
+        return blockedSides == 2;
+    }
+
+    private boolean isBlockedRectangle(int pos) {
+        return !isFree(pos) && !isFree(pos + 1) && !isFree(pos + width) && !isFree(pos + width + 1);
     }
 
     private void computeRoom(int pos) {
@@ -371,43 +576,60 @@ public class BoardState {
 
     // TODO method to update mapping for only one cell
     public void initializeBoxToGoalMapping() {
-        PriorityQueue<int[]> leastCostPairs = new PriorityQueue<int[]>(goalCnt * boxCnt, new Comparator<int[]>() {
+        PriorityQueue<int[]> goalsWithLeastCost = new PriorityQueue<int[]>(goalCnt, new Comparator<int[]>() {
             @Override
             public int compare(int[] a, int[] b) {
-                if (a[2] < b[2]) { return -1; }
-                if (a[2] > b[2]) { return 1; }
+                if (a[1] > b[1]) return -1;
+                if (a[1] < b[1]) return 1;
                 return 0;
             }
         });
-        for (int box = 0; box < boxCnt; box++) {
-            int boxPos = boxCells[box];
-            for (int goal = 0; goal < goalCnt; goal++) {
-                if (goalDist[boxPos][goal] < INF) {
-                    leastCostPairs.add(new int[]{ box, goal, goalDist[boxPos][goal] });
+
+        for (int goal = 0; goal < goalCnt; goal++) {
+            double distSum = 0;
+            int distCnt = 0;
+            for (int box = 0; box < boxCnt; box++) {
+                if (goalDist[boxCells[box]][goal] < INF) {
+                    distCnt++;
+                    distSum += goalDist[boxCells[box]][goal];
                 }
             }
+            goalsWithLeastCost.add(new int[] {goal, (int)(distSum / distCnt + 0.5)});
         }
+        goalsInPrioOrder = new int[goalCnt];
+        prioForGoal = new int[goalCnt];
         matchedGoal = new int[boxCnt];
-        int[] matchedBy = new int[goalCnt];
-        boolean[] visited = new boolean[goalCnt];
-        Arrays.fill(matchedBy, -1);
+        matchedBox = new int[goalCnt];
         Arrays.fill(matchedGoal, -1);
-        while (!leastCostPairs.isEmpty()) {
-            int[] boxGoalPair = leastCostPairs.poll();
-            if (matchedGoal[boxGoalPair[0]] == -1 && matchedBy[boxGoalPair[1]] == -1) {
-                matchedGoal[boxGoalPair[0]] = boxGoalPair[1];
-                matchedBy[boxGoalPair[1]] = boxGoalPair[0];
+        Arrays.fill(matchedBox, -1);
+        for (int goalIndex = 0; goalIndex < goalCnt; goalIndex++) {
+            int goal = goalsWithLeastCost.poll()[0];
+            prioForGoal[goal] = goalIndex;
+            goalsInPrioOrder[goalIndex] = goal;
+            int bestBox = -1;
+            for (int box = 0; box < boxCnt; box++) {
+                if (matchedGoal[box] == -1) {
+                    if (bestBox == -1 || goalDist[boxCells[box]][goal] < goalDist[boxCells[bestBox]][goal]) {
+                        bestBox = box;
+                    }
+                }
+            }
+            if (goalDist[boxCells[bestBox]][goal] < INF) {
+                matchedGoal[bestBox] = goal;
+                matchedBox[goal] = bestBox;
             }
         }
+
+        boolean[] visited = new boolean[goalCnt];
         for (int box = 0; box < boxCnt; box++) {
             int boxPos = boxCells[box];
             if (matchedGoal[box] == -1) {
                 Arrays.fill(visited, false);
                 for (int goal = 0; goal < goalCnt; goal++) {
                     if (goalDist[boxPos][goal] < INF) {
-                        if (match(goal, matchedBy, visited)) {
+                        if (match(goal, visited)) {
                             matchedGoal[box] = goal;
-                            matchedBy[goal] = box;
+                            matchedBox[goal] = box;
                             break;
                         }
                     }
@@ -426,23 +648,25 @@ public class BoardState {
             int g = matchedGoal[box];
             int boxPos2 = boxCells[otherBox];
             int g2 = matchedGoal[otherBox];
-            if (goalDist[boxPos][g] + goalDist[boxPos2][g2] > goalDist[boxPos][g2] + goalDist[boxPos2][g]) {
+            int oldDist = goalDist[boxPos][g] + goalDist[boxPos2][g2];
+            int newDist = goalDist[boxPos][g2] + goalDist[boxPos2][g];
+            if (newDist < oldDist) {// || newDist == oldDist && prioForGoal[g2] < prioForGoal[g] && goalDist[boxPos][g2] < goalDist[boxPos2][g2]) {
                 matchedGoal[box] = g2;
                 matchedGoal[otherBox] = g;
             }
         }
     }
 
-    private boolean match(int goal, int[] matchedBy, boolean[] visited) {
-        if (matchedBy[goal] == -1) { return true; }
+    private boolean match(int goal, boolean[] visited) {
+        if (matchedBox[goal] == -1) { return true; }
         if (visited[goal]) { return false; }
         visited[goal] = true;
-        int matchingBox = matchedBy[goal];
+        int matchingBox = matchedBox[goal];
         int boxPos = boxCells[matchingBox];
         for (int newGoal = 0; newGoal < goalCnt; newGoal++) {
             if (goalDist[boxPos][newGoal] < INF) {
-                if (match(newGoal, matchedBy, visited)) {
-                    matchedBy[newGoal] = matchingBox;
+                if (match(newGoal, visited)) {
+                    matchedBox[newGoal] = matchingBox;
                     matchedGoal[matchingBox] = newGoal;
                     return true;
                 }
@@ -466,6 +690,7 @@ public class BoardState {
                 moveBox(newPos, newPos2);
                 movePlayer(newPos);
                 successful = true;
+                movedBoxesCnt++;
                 previousMove = new StackEntry(direction | 4, previousMove);
             }
         }
@@ -489,6 +714,9 @@ public class BoardState {
 
     /*
      * Determines if the move does not create an unsolvable situation
+     * TODO Check for s-formation:
+     *           $#
+     *          #$
      */
     public boolean isGoodMove(int direction) {
         int newPos = playerPos + dx[direction];
@@ -546,7 +774,11 @@ public class BoardState {
             if (movedBox) {
                 int p2 = p1 + dx[dir];
                 moveBox(p2, p1);
+                if (temporaryWall[p2]) {
+                    removeTemporaryWallsDfs(p2);
+                }
             }
+            movedBoxesCnt--;
         }
         previousMove = previousMove.prev;
         return true;
@@ -652,7 +884,7 @@ public class BoardState {
 
     // TODO This should be updated while moving (maybe)
     public int getBoardValue() {
-        int res = 0;
+        int res = movedBoxesCnt + extraScore;
         for (int box = 0; box < boxCnt; box++) {
             if (matchedGoal[box] == -1) { return INF; }
             res += goalDist[boxCells[box]][matchedGoal[box]];
@@ -674,6 +906,10 @@ public class BoardState {
 
     public boolean isWall(int pos) {
         return board[pos] == WALL;
+    }
+
+    public boolean isWallOrTemporaryWall(int pos) {
+        return board[pos] == WALL || temporaryWall[pos];
     }
 
     public boolean isGoal(int pos) {
@@ -720,9 +956,28 @@ public class BoardState {
             } else if ((tunnels[pos] & ROOM) == ROOM) {
                 sb.append("\033[42m");
             }
+//            if (isWall(pos)) {
             sb.append(boardCharacters[board[pos] & 15]);
+//            } else {
+//                sb.append(costs[pos] > 9 ? "I" : costs[pos]);
+//            }
             if ((tunnels[pos] & TUNNEL) == TUNNEL || (tunnels[pos] & ROOM) == ROOM) {
                 sb.append("\033[0m");
+            }
+            if (pos % width == width - 1) {
+                sb.append('\n');
+            }
+        }
+        return sb.toString();
+    }
+
+    public String temporaryWallsToString() {
+        StringBuilder sb = new StringBuilder();
+        for (int pos = 0; pos < totalSize; pos++) {
+            if (temporaryWall[pos]) {
+                sb.append('T');
+            } else {
+                sb.append(boardCharacters[board[pos] & 15]);
             }
             if (pos % width == width - 1) {
                 sb.append('\n');

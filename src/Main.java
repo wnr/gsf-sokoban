@@ -6,12 +6,20 @@ public class Main {
 
     public static boolean debug            = false;
     public static boolean useGameStateHash = true;
+    public static boolean printPath = false;
 
     public static void main(String[] args) throws IOException {
         BoardState board = null;
         for (int i = 0; i < args.length; i++) {
             if (args[i].contains("debug") || args[i].contains("-d")) {
                 Main.debug = true;
+                args = removeArrayElement(args, i);
+                break;
+            }
+        }
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].contains("print") || args[i].contains("-p")) {
+                Main.printPath = true;
                 args = removeArrayElement(args, i);
                 break;
             }
@@ -50,17 +58,26 @@ public class Main {
         } else {
             System.out.println("Usage: java Main <index> [debug]");
             System.exit(0);
+
         }
 
 
         board.setup();
 
         if (debug) { System.out.println(board); }
-
-        String path = idAStar(board);
+        String path = aggressiveSearch(board);
+        if (path == null) {
+            if (debug) System.out.println("Aggressive search failed, trying idA*");
+            board.initializeBoxToGoalMapping();
+            board.analyzeBoard(false);
+            path = idAStar(board);
+        } else {
+            if (debug) System.out.println("Aggressive search succeeded!");
+        }
         if (debug) { System.out.println("Path found: "); }
         System.out.println(path);
         if (debug) { System.out.println(investigatePath(board, path, false) ? "Path is VALID" : "Path is INVALID"); }
+
     }
 
 
@@ -86,11 +103,11 @@ public class Main {
         long startTime = System.currentTimeMillis();
         res = null;
         int startValue = board.getBoardValue();
-        for (int maxValue = startValue; !debug || maxValue < startValue + 100; maxValue += 2) {
+        for (int maxValue = startValue; !debug || maxValue < startValue + 500; maxValue += 2) {
             long relativeTime = System.currentTimeMillis();
             visitedStates = 0;
             if (debug) { System.out.print("Trying maxValue " + maxValue + "... "); }
-            boolean done = dfs(board, 0, maxValue);
+            boolean done = dfs(board, 0, maxValue, false);
             if (debug) {
                 System.out.print("visited " + visitedStates + " states. ");
                 System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTime));
@@ -100,24 +117,33 @@ public class Main {
         return null;
     }
 
-    private static boolean dfs(BoardState board, int depth, int maxValue) {
+    public static String aggressiveSearch(BoardState board) {
+        res = null;
+        int startValue = board.getBoardValue();
+        boolean done = dfs(board, 0, startValue, true);
+        if (done) { return res; }
+        return null;
+    }
+
+    private static boolean dfs(BoardState board, int depth, int maxValue, boolean aggressive) {
         visitedStates++;
         if (board.isBoardSolved()) {
             res = board.backtrackPath();
             return true;
         }
-        board.analyzeBoard();
+        board.analyzeBoard(aggressive);
         int[] jumps = board.getPossibleJumpPositions();
-        if (board.getBoardValue() > maxValue - depth) { return false; }
+        if (jumps == null) return false;
+        if (board.getBoardValue() > maxValue) { return false; }
 
-        //        if (depth == maxDepth - 1) {
-        //            System.out.println(board);
-        //            try {
-        //                Thread.sleep(200);
-        //            } catch (InterruptedException e) {
-        //
-        //            }
-        //        }
+        if (printPath) {
+            System.out.println(board);
+            try {
+                Thread.sleep(30);
+            } catch (InterruptedException e) {
+
+            }
+        }
 
         if (useGameStateHash) {
             if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
@@ -126,7 +152,7 @@ public class Main {
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                 board.performMove(dir);
-                if (dfs(board, depth + 1, maxValue)) { return true; }
+                if (dfs(board, depth + 1, maxValue, aggressive)) { return true; }
                 board.reverseMove();
             }
         }
@@ -137,7 +163,7 @@ public class Main {
             for (int dir = 0; dir < 4; dir++) {
                 if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                     board.performMove(dir);
-                    if (dfs(board, depth + 1, maxValue)) { return true; }
+                    if (dfs(board, depth + 1, maxValue, aggressive)) { return true; }
                     board.reverseMove();
                 }
             }
@@ -147,6 +173,7 @@ public class Main {
     }
 
     public static boolean investigatePath(BoardState board, String path, boolean displaySteps) {
+        if (path == null) return false;
         for (char ch : path.toCharArray()) {
             switch (ch) {
                 case 'U':
