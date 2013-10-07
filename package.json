@@ -1,0 +1,20 @@
+{
+  "name": "gsf-sokoban",
+  "version": "0.1.0",
+  "description": "Google Search First Sokoban",
+  "main": "test",
+  "dependencies": {
+    "chalk": "~0.2.1",
+    "progress": "~1.1.0"
+  },
+  "scripts": {
+    "test": "make"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/wnr/gsf-sokoban.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wnr/gsf-sokoban/issues"
+  }
+}

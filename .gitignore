@@ -1,8 +1,160 @@
 *.class
 *.iml
 .idea
+out
 
 # Package Files #
 *.jar
 *.war
 *.ear
+/.idea/
+.DS_Store
+node_modules
+
+
+URRUULDURDDLULLULLDRRRRDRUDLDLURULLULLDRRRR
+URRUULDLDDRULURDRULLLULLDRRRR
+URRUULDLDDRULURDRULLLULLDRRRR
+URRUULDLDDRUL
+
+
+Trying depth 1... visited 2 states. Total time: 2 Relative time: 2
+Trying depth 2... visited 3 states. Total time: 2 Relative time: 0
+Trying depth 3... visited 5 states. Total time: 3 Relative time: 1
+Trying depth 4... visited 10 states. Total time: 4 Relative time: 1
+Trying depth 5... visited 24 states. Total time: 7 Relative time: 3
+Trying depth 6... visited 64 states. Total time: 12 Relative time: 5
+Trying depth 7... visited 194 states. Total time: 30 Relative time: 18
+Trying depth 8... visited 510 states. Total time: 100 Relative time: 70
+Trying depth 9... visited 1280 states. Total time: 176 Relative time: 76
+Trying depth 10... visited 3388 states. Total time: 260 Relative time: 85
+Trying depth 11... visited 8837 states. Total time: 399 Relative time: 138
+Trying depth 12... visited 21653 states. Total time: 624 Relative time: 225
+Trying depth 13... visited 49106 states. Total time: 1254 Relative time: 630
+Trying depth 14... visited 104825 states. Total time: 2690 Relative time: 1436
+Trying depth 15... visited 217246 states. Total time: 6587 Relative time: 3897
+
+
+Trying depth 1... visited 2 states. Total time: 2 Relative time: 2
+Trying depth 2... visited 3 states. Total time: 2 Relative time: 0
+Trying depth 3... visited 5 states. Total time: 2 Relative time: 0
+Trying depth 4... visited 10 states. Total time: 3 Relative time: 1
+Trying depth 5... visited 24 states. Total time: 5 Relative time: 2
+Trying depth 6... visited 70 states. Total time: 9 Relative time: 4
+Trying depth 7... visited 252 states. Total time: 21 Relative time: 12
+Trying depth 8... visited 942 states. Total time: 69 Relative time: 48
+Trying depth 9... visited 3791 states. Total time: 125 Relative time: 56
+Trying depth 10... visited 16951 states. Total time: 269 Relative time: 144
+Trying depth 11... visited 81801 states. Total time: 585 Relative time: 316
+Trying depth 12... visited 412627 states. Total time: 1111 Relative time: 526
+Trying depth 13... visited 2109292 states. Total time: 3773 Relative time: 2662
+Trying depth 14... visited 10824846 states. Total time: 17416 Relative time: 13643
+Trying depth 15... Disconnected from the target VM, address: '127.0.0.1:61272', transport: 'socket'
+visited 55474495 states. Total time: 88255 Relative time: 70839
+Path found: 
+
+
+
+
+
+Trying depth 1... visited 2 states. Total time: 1 Relative time: 1
+Trying depth 2... visited 3 states. Total time: 2 Relative time: 1
+Trying depth 3... visited 5 states. Total time: 2 Relative time: 0
+Trying depth 4... visited 10 states. Total time: 3 Relative time: 1
+Trying depth 5... visited 24 states. Total time: 5 Relative time: 2
+Trying depth 6... visited 70 states. Total time: 10 Relative time: 5
+Trying depth 7... visited 252 states. Total time: 26 Relative time: 16
+Trying depth 8... visited 942 states. Total time: 85 Relative time: 59
+Trying depth 9... visited 3791 states. Total time: 173 Relative time: 88
+Trying depth 10... visited 16951 states. Total time: 370 Relative time: 197
+Trying depth 11... visited 81801 states. Total time: 688 Relative time: 318
+Trying depth 12... visited 412627 states. Total time: 1861 Relative time: 1173
+Trying depth 13... visited 2109292 states. Total time: 11025 Relative time: 9164
+Trying depth 14... visited 10824846 states. Total time: 91156 Relative time: 80131
+
+
+
+
+Trying depth 1... visited 2 states. Total time: 1 Relative time: 1
+Trying depth 2... visited 3 states. Total time: 2 Relative time: 1
+Trying depth 3... visited 5 states. Total time: 2 Relative time: 0
+Trying depth 4... visited 10 states. Total time: 3 Relative time: 1
+Trying depth 5... visited 24 states. Total time: 4 Relative time: 1
+Trying depth 6... visited 70 states. Total time: 8 Relative time: 4
+Trying depth 7... visited 252 states. Total time: 20 Relative time: 12
+Trying depth 8... visited 942 states. Total time: 68 Relative time: 48
+Trying depth 9... visited 3791 states. Total time: 132 Relative time: 64
+Trying depth 10... visited 16951 states. Total time: 271 Relative time: 139
+Trying depth 11... visited 81801 states. Total time: 588 Relative time: 317
+Trying depth 12... visited 412627 states. Total time: 1198 Relative time: 610
+Trying depth 13... visited 2109292 states. Total time: 4525 Relative time: 3327
+Trying depth 14... 
+
+
+Trying depth 1... visited 2 states. Total time: 1 Relative time: 1
+Trying depth 2... visited 3 states. Total time: 2 Relative time: 1
+Trying depth 3... visited 5 states. Total time: 2 Relative time: 0
+Trying depth 4... visited 10 states. Total time: 3 Relative time: 1
+Trying depth 5... visited 24 states. Total time: 4 Relative time: 1
+Trying depth 6... visited 70 states. Total time: 8 Relative time: 4
+Trying depth 7... visited 252 states. Total time: 19 Relative time: 11
+Trying depth 8... visited 942 states. Total time: 65 Relative time: 46
+Trying depth 9... visited 3791 states. Total time: 123 Relative time: 57
+Trying depth 10... visited 16951 states. Total time: 283 Relative time: 160
+Trying depth 11... visited 81801 states. Total time: 619 Relative time: 336
+Trying depth 12... visited 412627 states. Total time: 1265 Relative time: 646
+Trying depth 13... visited 2109292 states. Total time: 4005 Relative time: 2740
+Trying depth 14... visited 10824846 states. Total time: 19842 Relative time: 15837
+Trying depth 15... 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Trying depth 1... visited 3 states. Total time: 1 Relative time: 1
+Trying depth 2... visited 5 states. Total time: 1 Relative time: 0
+Trying depth 3... visited 9 states. Total time: 1 Relative time: 0
+Trying depth 4... visited 18 states. Total time: 2 Relative time: 1
+Trying depth 5... visited 52 states. Total time: 3 Relative time: 1
+Trying depth 6... visited 190 states. Total time: 6 Relative time: 3
+Trying depth 7... visited 779 states. Total time: 20 Relative time: 14
+Trying depth 8... visited 3429 states. Total time: 66 Relative time: 46
+Trying depth 9... visited 16402 states. Total time: 168 Relative time: 102
+Trying depth 10... visited 85970 states. Total time: 470 Relative time: 301
+Trying depth 11... visited 477050 states. Total time: 793 Relative time: 323
+Trying depth 12... visited 2759795 states. Total time: 2384 Relative time: 1591
+Trying depth 13... visited 16245972 states. Total time: 11715 Relative time: 9331
+
+
+
+
+
+Trying depth 1... visited 3 states. Total time: 2 Relative time: 2
+Trying depth 2... visited 5 states. Total time: 3 Relative time: 0
+Trying depth 3... visited 9 states. Total time: 4 Relative time: 1
+Trying depth 4... visited 18 states. Total time: 5 Relative time: 1
+Trying depth 5... visited 52 states. Total time: 8 Relative time: 3
+Trying depth 6... visited 175 states. Total time: 19 Relative time: 11
+Trying depth 7... visited 658 states. Total time: 69 Relative time: 50
+Trying depth 8... visited 2153 states. Total time: 175 Relative time: 106
+Trying depth 9... visited 6202 states. Total time: 426 Relative time: 251
+Trying depth 10... visited 16997 states. Total time: 784 Relative time: 358
+Trying depth 11... visited 43923 states. Total time: 1578 Relative time: 794
+Trying depth 12... visited 105793 states. Total time: 3724 Relative time: 2146
+Trying depth 13... visited 235885 states. Total time: 10548 Relative time: 6824
+
+
+
+
