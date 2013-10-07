@@ -82,8 +82,10 @@ public class BoardState {
 
     // TODO Add method moveBoxToGoalIfPossible, needs changes in reverseMove
 
-    private int[]                   playerAndBoxesHashCells;
+    private int[]                playerAndBoxesHashCells;
     private HashMap<Long, int[]> gameStateHash;
+
+    int mostUpLeftPos;
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -126,10 +128,8 @@ public class BoardState {
             }
         }
 
-        if (Main.useGameStateHash) {
             gameStateHash = new HashMap<Long, int[]>();
             playerAndBoxesHashCells = new int[boxCnt + 1];
-        }
 
         boxCells = new int[boxCnt];
         goalCells = new int[goalCnt];
@@ -144,7 +144,12 @@ public class BoardState {
 
     public void analyzeBoard(boolean aggressive) {
         int boardSections[] = new int[totalSize];
-        int sectionCnt = computeBoardSections(boardSections);
+
+        computeBoardSections();
+        mostUpLeftPos = playerPos;
+        analyzeBoardDfs(playerPos, boardSections);
+
+        playerAndBoxesHashCells[boxCnt] = mostUpLeftPos;
 
         int lastMovedBoxIndex = -1;
         int lastMovedBoxPos = -1;
@@ -164,41 +169,7 @@ public class BoardState {
             }
         }
 
-        extraScore = 0;
-        int[] cellCosts = computeCellCosts();
-        boolean[] usedSection = new boolean[sectionCnt];
-        for (int box = 0; box < boxCnt; box++) {
-            int boxPos = boxCells[box];
-            int goal = matchedGoal[box];
-            if (isGoal(boxPos)) continue;
-            int bestCost = INF, bestPos = -1;
-            for (int dir = 0; dir < 2; dir++) {
-                int newPos = boxPos + dx[dir];
-                int oppPos = boxPos + dx[dir + 2];
-                if (!isWallOrTemporaryWall(newPos) && !isWallOrTemporaryWall(oppPos)) {
-                    if (cellCosts[oppPos] < INF && goalDist[newPos][goal] < bestCost) {
-                        bestCost = goalDist[newPos][goal];
-                        bestPos = oppPos;
-                    }
-                    if (cellCosts[newPos] < INF && goalDist[oppPos][goal] < bestCost) {
-                        bestCost = goalDist[oppPos][goal];
-                        bestPos = newPos;
-                    }
-                }
-            }
-            if (bestPos != -1) {
-                if (!usedSection[boardSections[bestPos]]) {
-                    usedSection[boardSections[bestPos]] = true;
-                    extraScore += cellCosts[bestPos];
-                }
-            } else {
-                extraScore += INF;
-            }
-        }
-//        System.out.println("Extrascore: " + extraScore);
-
-        int playerSection = boardSections[playerPos];
-        if (Main.useGameStateHash) { playerAndBoxesHashCells[boxCnt] = totalSize + playerSection; }
+        playerAndBoxesHashCells[boxCnt] = totalSize + mostUpLeftPos;
 
         if ((tunnels[playerPos] & TUNNEL) == TUNNEL) {
             int dir = directionLastMove();
@@ -224,11 +195,11 @@ public class BoardState {
                 if (isFree(newPos)) {
                     int newPos2 = boxPos + dx[dir + 2];
                     if (isFree(newPos2)) {
-                        if (playerSection == boardSections[newPos] && playerPos != newPos) {
+                        if (1 == boardSections[newPos] && playerPos != newPos) {
                             moves.add(newPos);
                             boardSections[newPos] = -1;
                         }
-                        if (playerSection == boardSections[newPos2] && playerPos != newPos2) {
+                        if (1 == boardSections[newPos2] && playerPos != newPos2) {
                             moves.add(newPos2);
                             boardSections[newPos2] = -1;
                         }
@@ -271,31 +242,27 @@ public class BoardState {
         }
     }
 
-    private int computeBoardSections(int[] boardSections) {
-        int sectionIndex = 1;
+    private void computeBoardSections() {
         int boxIndex = 0;
         for (int pos = 0; pos < totalSize; pos++) {
-            if (isFree(pos)) {
-                if (boardSections[pos] == 0 && boardSections[playerPos] == 0) {
-                    analyzeBoardDfs(pos, sectionIndex, boardSections);
-                    sectionIndex++;
-                }
-            } else if (isBox(pos)) {
+             if (isBox(pos)) {
                 int boxNum = getBoxNumber(pos);
                 boxCells[boxNum] = pos;
-                if (Main.useGameStateHash) { playerAndBoxesHashCells[boxIndex] = pos; }
+                playerAndBoxesHashCells[boxIndex] = pos;
                 boxIndex++;
             }
         }
-        return sectionIndex;
     }
 
-    private void analyzeBoardDfs(int pos, int sectionIndex, int[] boardSections) {
-        boardSections[pos] = sectionIndex;
+    private void analyzeBoardDfs(int pos, int[] boardSections) {
+        boardSections[pos] = 1;
         for (int dir = 0; dir < 4; dir++) {
             int newPos = pos + dx[dir];
             if (isFree(newPos) && boardSections[newPos] == 0) {
-                analyzeBoardDfs(newPos, sectionIndex, boardSections);
+                if(newPos < mostUpLeftPos){
+                    mostUpLeftPos = newPos;
+                }
+                analyzeBoardDfs(newPos, boardSections);
             }
         }
     }
@@ -353,62 +320,6 @@ public class BoardState {
         computeTunnels();
         initializeBoxToGoalMapping();
         analyzeBoard(false);
-    }
-
-    private int[] computeCellCosts() {
-        int[] cost = new int[totalSize*5];
-        for (int i = 0; i < cost.length; i++) cost[i] = INF;
-        PriorityQueue<int[]> q = new PriorityQueue<int[]>(totalSize, new Comparator<int[]>() {
-            @Override
-            public int compare(int[] a, int[] b) {
-                if (a[1] < b[1]) return -1;
-                if (a[1] > b[1]) return 1;
-                return 0;
-            }
-        });
-        q.add(new int[] {playerPos, 0, 4});
-        cost[5*playerPos + 4] = 0;
-        while (!q.isEmpty()) {
-            int[] state = q.poll();
-            int pos = state[0], c = state[1], forbiddenDir = state[2];
-            if (cost[5*pos + forbiddenDir] < c) continue;
-            for (int dir = 0; dir < 4; dir++) {
-                if (dir == forbiddenDir) continue;
-                int pos2 = pos + dx[dir];
-                if (isFree(pos2)) {
-                    if (c < cost[5*pos2 + 4]) {
-                        cost[5*pos2 + 4] = c;
-                        q.add(new int[] {pos2, c, 4});
-                    }
-                } else if (isBox(pos2)) {
-                    int pos3 = pos2 + dx[dir];
-                    if (isFree(pos3) && !trappingCells[pos3]) {
-                        int goal = matchedGoal[getBoxNumber(pos2)];
-                        int newCost = c + 1 + goalDist[pos3][goal] - goalDist[pos2][goal];
-                        if (newCost < cost[5*pos2 + dir]) {
-                            cost[5*pos2 + dir] = newCost;
-                            q.add(new int[] {pos2, newCost, dir});
-                        }
-                        int pos4 = pos3 + dx[dir];
-                        if (isFree(pos4) && !trappingCells[pos4]) {
-                            newCost = c + 2 + goalDist[pos4][goal] - goalDist[pos2][goal];
-                            if (newCost < cost[5*pos3 + 4]) {
-                                cost[5*pos3 + 4] = newCost;
-                                q.add(new int[] {pos3, newCost, 4});
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        int[] res = new int[totalSize];
-        for (int pos = 0; pos < totalSize; pos++) {
-            res[pos] = cost[5*pos];
-            for (int i = 1; i < 5; i++) {
-                res[pos] = Math.min(res[pos], cost[5*pos + i]);
-            }
-        }
-        return res;
     }
 
     public void computeTunnels() {
@@ -574,7 +485,6 @@ public class BoardState {
         }
     }
 
-    // TODO method to update mapping for only one cell
     public void initializeBoxToGoalMapping() {
         PriorityQueue<int[]> goalsWithLeastCost = new PriorityQueue<int[]>(goalCnt, new Comparator<int[]>() {
             @Override
@@ -956,11 +866,7 @@ public class BoardState {
             } else if ((tunnels[pos] & ROOM) == ROOM) {
                 sb.append("\033[42m");
             }
-//            if (isWall(pos)) {
             sb.append(boardCharacters[board[pos] & 15]);
-//            } else {
-//                sb.append(costs[pos] > 9 ? "I" : costs[pos]);
-//            }
             if ((tunnels[pos] & TUNNEL) == TUNNEL || (tunnels[pos] & ROOM) == ROOM) {
                 sb.append("\033[0m");
             }

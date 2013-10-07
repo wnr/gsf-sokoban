@@ -5,7 +5,6 @@ import java.util.*;
 public class Main {
 
     public static boolean debug            = false;
-    public static boolean useGameStateHash = true;
     public static boolean printPath = false;
 
     public static void main(String[] args) throws IOException {
@@ -145,9 +144,7 @@ public class Main {
             }
         }
 
-        if (useGameStateHash) {
-            if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
-        }
+        if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
         // First try and push a box from where we stand
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
