@@ -78,9 +78,12 @@ public class BoardState {
     private int[]       goalsInPrioOrder;
     private int[]       prioForGoal;
     private int         movedBoxesCnt;
-    private int         extraScore;
+    private int[][]    goalSideDist;
+    private int[]      boxReachableSideIndex;
 
     // TODO Add method moveBoxToGoalIfPossible, needs changes in reverseMove
+
+
 
     private int[]                playerAndBoxesHashCells;
     private HashMap<Long, int[]> gameStateHash;
@@ -93,8 +96,8 @@ public class BoardState {
         for (String line : lines) {
             width = Math.max(width, line.length());
         }
-        totalSize = width*height;
-        dx = new int[] {-width, 1, width, -1};
+        totalSize = width * height;
+        dx = new int[]{ -width, 1, width, -1 };
         board = new int[totalSize];
         int row = 0;
         List<Integer> tempGoalCells = new ArrayList<Integer>();
@@ -128,8 +131,8 @@ public class BoardState {
             }
         }
 
-            gameStateHash = new HashMap<Long, int[]>();
-            playerAndBoxesHashCells = new int[boxCnt + 1];
+        gameStateHash = new HashMap<Long, int[]>();
+        playerAndBoxesHashCells = new int[boxCnt + 1];
 
         boxCells = new int[boxCnt];
         goalCells = new int[goalCnt];
@@ -245,7 +248,7 @@ public class BoardState {
     private void computeBoardSections() {
         int boxIndex = 0;
         for (int pos = 0; pos < totalSize; pos++) {
-             if (isBox(pos)) {
+            if (isBox(pos)) {
                 int boxNum = getBoxNumber(pos);
                 boxCells[boxNum] = pos;
                 playerAndBoxesHashCells[boxIndex] = pos;
@@ -259,7 +262,7 @@ public class BoardState {
         for (int dir = 0; dir < 4; dir++) {
             int newPos = pos + dx[dir];
             if (isFree(newPos) && boardSections[newPos] == 0) {
-                if(newPos < mostUpLeftPos){
+                if (newPos < mostUpLeftPos) {
                     mostUpLeftPos = newPos;
                 }
                 analyzeBoardDfs(newPos, boardSections);
@@ -279,29 +282,62 @@ public class BoardState {
 
     public void setup() {
         goalDist = new int[totalSize][goalCnt];
-        for (int pos = 0; pos < totalSize; pos++) {
-            Arrays.fill(goalDist[pos], INF);
+        goalSideDist = new int[totalSize * 4][goalCnt];
+        boxReachableSideIndex = new int[totalSize * 4];
+        Arrays.fill(boxReachableSideIndex, -1);
+        for (int pos = 0; pos < totalSize * 4; pos++) {
+            Arrays.fill(goalSideDist[pos], INF);
+            if (pos < totalSize) {
+                Arrays.fill(goalDist[pos], INF);
+            }
         }
         for (int i = 0; i < goalCells.length; i++) {
             int goalPos = goalCells[i];
-            goalDist[goalPos][i] = 0;
+
+            for (int dir = 0; dir < 4; dir++) {
+                if (!isWall(goalPos + dx[dir])) {
+                    goalSideDist[goalPos * 4 + dir][i] = 0;
+                }
+            }
+            //            goalDist[goalPos][i] = 0;
             LinkedList<Integer> q = new LinkedList<Integer>();
             q.add(goalPos);
             while (!q.isEmpty()) {
                 int pos = q.removeFirst();
                 for (int dir = 0; dir < 4; dir++) {
                     int newPos = pos + dx[dir];
-                    int d = goalDist[pos][i] + 1;
-                    if (!isWall(newPos) && d < goalDist[newPos][i]) {
+                    int d = goalSideDist[pos * 4 + dir][i] + 1;
+                    if (!isWall(newPos) && d < goalSideDist[newPos * 4 + dir][i]) {
                         int newPos2 = newPos + dx[dir];
                         if (!isWall(newPos2)) {
-                            goalDist[newPos][i] = d;
+
+                            computeBoxReachableSideIndexBFS(newPos);
+
+                            int boxSideZoneIndex = boxReachableSideIndex[newPos * 4 + dir];
+                            for (int boxSide = 0; boxSide < 4; boxSide++) {
+                                if (boxReachableSideIndex[newPos * 4 + boxSide] == boxSideZoneIndex) {
+                                    goalSideDist[newPos * 4 + boxSide][i] = d;
+                                }
+                            }
                             q.add(newPos);
                         }
                     }
                 }
             }
         }
+        for (int pos = 0; pos < totalSize; pos++) {
+            for (int goal = 0; goal < goalCells.length; goal++) {
+                int value = goalSideDist[pos * 4 + 3][goal];
+                for (int dir = 0; dir < 3; dir++) {
+                    int newValue = goalSideDist[pos * 4 + dir][goal];
+                    if (newValue < value) {
+                        value = newValue;
+                    }
+                }
+                goalDist[pos][goal] = value;
+            }
+        }
+
         // Trapping cells
         trappingCells = new boolean[totalSize];
         for (int pos = 0; pos < totalSize; pos++) {
@@ -322,6 +358,63 @@ public class BoardState {
         analyzeBoard(false);
     }
 
+    private String goalDistToString(int goal) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Goal distance matrices for goal: " + goal + '\n');
+        for (int dir = 0; dir < 4; dir++) {
+            for (int pos = 0; pos < board.length; pos++) {
+                int value = goalSideDist[pos * 4 + dir][goal];
+                if (isWall(pos)) {
+                    sb.append(WALL_CHAR);
+                } else if (value == INF) {
+                    sb.append('X');
+                } else {
+                    sb.append(value);
+                }
+                if (pos % width == width - 1) {
+                    sb.append('\n');
+                }
+            }
+            sb.append('\n');
+        }
+        return sb.toString();
+    }
+
+    private void computeBoxReachableSideIndexBFS(int boxPos) {
+
+        if (boxReachableSideIndex[boxPos * 4] != -1) {
+            return;
+        }
+        int zoneIndex = 0;
+        boolean[] visitedCells = new boolean[board.length];
+        for (int startDir = 0; startDir < 4; startDir++) {
+            int startPos = boxPos + dx[startDir];
+            if (!visitedCells[startPos]) {
+                boxReachableSideIndex[boxPos * 4 + startDir] = zoneIndex;
+                if (!isWall(startPos)) {
+                    visitedCells[startPos] = true;
+                    LinkedList<Integer> q = new LinkedList<Integer>();
+                    q.add(startPos);
+                    while (!q.isEmpty()) {
+                        int pos = q.removeFirst();
+                        for (int dir = 0; dir < 4; dir++) {
+                            int newPos = pos + dx[dir];
+                            if (!isWall(newPos) && !visitedCells[newPos]) {
+                                if (newPos == boxPos) {
+                                    boxReachableSideIndex[boxPos * 4 + ((dir + 2) & 3)] = zoneIndex;
+                                } else {
+                                    visitedCells[newPos] = true;
+                                    q.add(newPos);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            zoneIndex++;
+        }
+    }
+
     public void computeTunnels() {
         tunnels = new int[totalSize];
 
@@ -329,7 +422,7 @@ public class BoardState {
 
         //Iterate over board, but do not check outer rows or cols.
         for (int pos = width; pos < totalSize - width; pos++) {
-            if (onBorder(pos)) continue;
+            if (onBorder(pos)) { continue; }
             if ((board[pos] & WALL) == 0) {
                 boolean u = (board[pos - width] & WALL) == WALL;
                 boolean d = (board[pos + width] & WALL) == WALL;
@@ -356,7 +449,7 @@ public class BoardState {
 
 
         for (int pos = width; pos < totalSize - width; pos++) {
-            if (onBorder(pos)) continue;
+            if (onBorder(pos)) { continue; }
             if ((tunnels[pos] & TUNNEL) == TUNNEL && (tunnels[pos] & DEAD_END) != DEAD_END) {
                 computeRoom(pos);
             }
@@ -474,7 +567,7 @@ public class BoardState {
 
     private void updateTunnels(int pos) {
         if ((tunnels[pos] & DEAD_END) == DEAD_END) {
-            for (int dir = 0; dir < 4 ; dir++) {
+            for (int dir = 0; dir < 4; dir++) {
                 int newPos = pos + dx[dir];
                 int cell = tunnels[newPos];
                 if ((cell & TUNNEL) == TUNNEL && (cell & DEAD_END) != DEAD_END) {
@@ -655,7 +748,7 @@ public class BoardState {
         boolean unmatchedBox = false;
         for (int posDiff1 = 0; posDiff1 <= width; posDiff1 += width) {
             for (int posDiff2 = 0; posDiff2 <= 1; posDiff2++) {
-                if (isFree(pos + posDiff1 + posDiff2)) return true;
+                if (isFree(pos + posDiff1 + posDiff2)) { return true; }
                 unmatchedBox |= (board[pos + posDiff1 + posDiff2] & 15) == BOX;
             }
         }
@@ -784,17 +877,17 @@ public class BoardState {
         return true;
     }
 
-    private long getHashCode(int[] array){
+    private long getHashCode(int[] array) {
         long hash = 0;
-        for(int i = 0; i<array.length; i++){
-            hash = hash*31 + array[i];
+        for (int i = 0; i < array.length; i++) {
+            hash = hash * 31 + array[i];
         }
         return hash;
     }
 
     // TODO This should be updated while moving (maybe)
     public int getBoardValue() {
-        int res = movedBoxesCnt + extraScore;
+        int res = movedBoxesCnt;
         for (int box = 0; box < boxCnt; box++) {
             if (matchedGoal[box] == -1) { return INF; }
             res += goalDist[boxCells[box]][matchedGoal[box]];
