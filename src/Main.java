@@ -60,7 +60,6 @@ public class Main {
 
         }
 
-
         board.setup();
 
         if (debug) { System.out.println(board); }
@@ -126,7 +125,9 @@ public class Main {
 
     private static boolean dfs(BoardState board, int depth, int maxValue, boolean aggressive) {
         visitedStates++;
-//        board.moveLatestBoxToGoalIfPossible(); TODO Only use this if density is low
+        if (!board.isDenseBoard()) {
+            board.moveLatestBoxToGoalIfPossible();
+        }
         if (board.isBoardSolved()) {
             res = board.backtrackPath();
             return true;

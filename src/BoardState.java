@@ -9,6 +9,7 @@ import java.util.PriorityQueue;
 public class BoardState {
 
     public static final int INF = 100000000;
+    public static final double DENSE_BOARD_LIMIT = 0.15;
 
     public static final char FREE_SPACE_CHAR     = ' ';
     public static final char GOAL_CHAR           = '.';
@@ -80,6 +81,7 @@ public class BoardState {
     private int         movedBoxesCnt;
     private int[][]    goalSideDist;
     private int[]      boxReachableSideIndex;
+    private double     boardDensity;
 
     // TODO Add method moveBoxToGoalIfPossible, needs changes in reverseMove
 
@@ -130,6 +132,15 @@ public class BoardState {
                 board[pos] = WALL;
             }
         }
+
+        double freeCellCount = 0;
+        // Calculate board density
+        for (int pos = 0; pos < totalSize; pos++) {
+            if (isFree(pos)) {
+                freeCellCount++;
+            }
+        }
+        boardDensity = boxCnt / (boxCnt + freeCellCount);
 
         gameStateHash = new HashMap<Long, int[]>();
         playerAndBoxesHashCells = new int[boxCnt + 1];
@@ -1027,6 +1038,14 @@ public class BoardState {
 
     public boolean isFree(int pos) {
         return (board[pos] & NOT_FREE) == 0;
+    }
+
+    public boolean isDenseBoard() {
+        return boardDensity > DENSE_BOARD_LIMIT;
+    }
+
+    public double getBoardDensity() {
+        return boardDensity;
     }
 
     // TODO this should be updated while moving
