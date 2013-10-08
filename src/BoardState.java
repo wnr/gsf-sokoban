@@ -8,7 +8,7 @@ import java.util.PriorityQueue;
 
 public class BoardState {
 
-    public static final int INF = 100000000;
+    public static final int    INF               = 100000000;
     public static final double DENSE_BOARD_LIMIT = 0.15;
 
     public static final char FREE_SPACE_CHAR     = ' ';
@@ -63,28 +63,28 @@ public class BoardState {
 
     private int width, height, totalSize;
     private int playerPos;
-    public int goalCnt, boxCnt;
+    public  int goalCnt, boxCnt;
 
-    private StackEntry  previousMove;
-    private int[]       board;
-    private int[]     boxCells;
-    private int[]     goalCells;
-    private int[][]   goalDist;
-    private boolean[] trappingCells;
-    private boolean[] temporaryWall;
-    private int[]       matchedGoal;
-    private int[]       matchedBox;
-    private int[]     possibleJumpPositions;
-    private int[]     tunnels;
-    private int[]       goalsInPrioOrder;
-    private int[]       prioForGoal;
-    private int         movedBoxesCnt;
+    private StackEntry previousMove;
+    private int[]      board;
+    private int[]      boxCells;
+    private int[]      goalCells;
+    private boolean[]  trappingCells;
+    private boolean[]  temporaryWall;
+    private int[]      matchedGoal;
+    private int[]      matchedBox;
+    private int[]      possibleJumpPositions;
+    private int[]      tunnels;
+    private int[]      goalsInPrioOrder;
+    private int[]      prioForGoal;
+    private int        movedBoxesCnt;
     private int[][]    goalSideDist;
     private int[]      boxReachableSideIndex;
-    private double     boardDensity;
+    private int[]      currentReachableBoxDir;
+
+    private double boardDensity;
 
     // TODO Add method moveBoxToGoalIfPossible, needs changes in reverseMove
-
 
 
     private int[]                playerAndBoxesHashCells;
@@ -218,7 +218,9 @@ public class BoardState {
             int goal = goalsInPrioOrder[i];
             int box = matchedBox[goal];
             int boxPos = boxCells[box];
-            if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && goalDist[boxCells[lastMovedBoxIndex]][matchedGoal[lastMovedBoxIndex]] != 0) continue;
+            if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && getGoalSideDistValue(boxCells[lastMovedBoxIndex], matchedGoal[lastMovedBoxIndex]) != 0) {
+                continue;
+            }
             for (int dir = 0; dir < 2; dir++) {
                 int newPos = boxPos + dx[dir];
                 if (isFree(newPos)) {
@@ -283,11 +285,11 @@ public class BoardState {
     }
 
     public boolean moveLatestBoxToGoalIfPossible() {
-        if (!movedBoxLastMove()) return false;
+        if (!movedBoxLastMove()) { return false; }
         int boxPos = playerPos + dx[directionLastMove()];
         int boxIndex = getBoxNumber(boxPos);
         int goal = matchedGoal[boxIndex];
-        if (goalDist[boxPos][goal] == 0) return false;
+        if (getGoalSideDistValue(boxPos, goal) == 0) { return false; }
         LinkedList<Integer> moves = new LinkedList<Integer>();
         board[boxPos] &= ~BOX;
         boolean possible = moveBoxToGoalDfs(playerPos, directionLastMove(), goal, moves);
@@ -297,7 +299,7 @@ public class BoardState {
                 if ((move & 8) != 0) {
                     performJump(move >>> 4);
                 } else {
-                    performMove(move&3);
+                    performMove(move & 3);
                 }
             }
             previousMove.val |= moves.size() << 22;
@@ -308,39 +310,39 @@ public class BoardState {
 
     private boolean moveBoxToGoalDfs(int pos, int forward, int goal, LinkedList<Integer> moves) {
         int boxPos = pos + dx[forward];
-        if (goalDist[boxPos][goal] == 0) return true;
+        if (getGoalSideDistValue(boxPos, goal) == 0) { return true; }
         int left = forward == 0 ? 3 : forward - 1;
-        int right = (forward + 1)&3;
-        int backward = (forward + 2)&3;
+        int right = (forward + 1) & 3;
+        int backward = (forward + 2) & 3;
         boolean[] reachable = new boolean[4];
         reachable[backward] = true;
 
         // Try walking to the left of the box
-        if (checkIfFreePath(pos, new int[] {left, forward})) {
+        if (checkIfFreePath(pos, new int[]{ left, forward })) {
             reachable[left] = true;
-            if (checkIfFreePath(boxPos + dx[left], new int[] {forward, right})) {
+            if (checkIfFreePath(boxPos + dx[left], new int[]{ forward, right })) {
                 reachable[forward] = true;
-                if (checkIfFreePath(boxPos + dx[forward], new int[] {right, backward})) {
+                if (checkIfFreePath(boxPos + dx[forward], new int[]{ right, backward })) {
                     reachable[right] = true;
                 }
             }
         }
 
         // Try walking to the right of the box
-        if (checkIfFreePath(pos, new int[] {right, forward})) {
+        if (checkIfFreePath(pos, new int[]{ right, forward })) {
             reachable[right] = true;
-            if (checkIfFreePath(boxPos + dx[right], new int[] {forward, left})) {
+            if (checkIfFreePath(boxPos + dx[right], new int[]{ forward, left })) {
                 reachable[forward] = true;
-                if (checkIfFreePath(boxPos + dx[forward], new int[] {left, backward})) {
+                if (checkIfFreePath(boxPos + dx[forward], new int[]{ left, backward })) {
                     reachable[left] = true;
                 }
             }
         }
         for (int i = 0; i < 4; i++) {
             if (reachable[i]) {
-                int moveDir = (i + 2)&3;
+                int moveDir = (i + 2) & 3;
                 int newBoxPos = boxPos + dx[moveDir];
-                if (isFree(newBoxPos) && goalSideDist[4*newBoxPos + i][goal] < goalSideDist[4*boxPos + i][goal]) {
+                if (isFree(newBoxPos) && goalSideDist[4 * newBoxPos + i][goal] < goalSideDist[4 * boxPos + i][goal]) {
                     boolean possible = moveBoxToGoalDfs(boxPos, moveDir, goal, moves);
                     if (possible) {
                         moves.addFirst(4 | moveDir);
@@ -356,10 +358,10 @@ public class BoardState {
     }
 
     private boolean checkIfFreePath(int pos, int[] moves) {
-        if (!isFree(pos)) return false;
+        if (!isFree(pos)) { return false; }
         for (int move : moves) {
             pos += dx[move];
-            if (!isFree(pos)) return false;
+            if (!isFree(pos)) { return false; }
         }
         return true;
     }
@@ -373,7 +375,7 @@ public class BoardState {
             }
         }
         for (int goal = 0; goal < goalCnt; goal++) {
-            if (!reachable[goalCells[goal]]) return false;
+            if (!reachable[goalCells[goal]]) { return false; }
         }
         return true;
     }
@@ -427,23 +429,18 @@ public class BoardState {
     }
 
     public void setup() {
-        goalDist = new int[totalSize][goalCnt];
+        currentReachableBoxDir = new int[boxCnt];
         goalSideDist = new int[totalSize * 4][goalCnt];
         boxReachableSideIndex = new int[totalSize * 4];
         Arrays.fill(boxReachableSideIndex, -1);
         for (int pos = 0; pos < totalSize * 4; pos++) {
             Arrays.fill(goalSideDist[pos], INF);
-            if (pos < totalSize) {
-                Arrays.fill(goalDist[pos], INF);
-            }
         }
         for (int i = 0; i < goalCells.length; i++) {
             int goalPos = goalCells[i];
 
             for (int dir = 0; dir < 4; dir++) {
-                if (!isWall(goalPos + dx[dir])) {
-                    goalSideDist[goalPos * 4 + dir][i] = 0;
-                }
+                goalSideDist[goalPos * 4 + dir][i] = 0;
             }
             //            goalDist[goalPos][i] = 0;
             LinkedList<Integer> q = new LinkedList<Integer>();
@@ -457,7 +454,7 @@ public class BoardState {
                         int newPos2 = newPos + dx[dir];
                         if (!isWall(newPos2)) {
 
-                            computeBoxReachableSideIndexBFS(newPos);
+                            computeReachableSideIndexBFS(newPos);
 
                             int boxSideZoneIndex = boxReachableSideIndex[newPos * 4 + dir];
                             for (int boxSide = 0; boxSide < 4; boxSide++) {
@@ -471,6 +468,8 @@ public class BoardState {
                 }
             }
         }
+
+        //TODO: Make a complete matrix sized totalSize*totalSize (or vector maybe) so we can just grab the correct sides
         for (int pos = 0; pos < totalSize; pos++) {
             for (int goal = 0; goal < goalCells.length; goal++) {
                 int value = goalSideDist[pos * 4 + 3][goal];
@@ -480,10 +479,6 @@ public class BoardState {
                         value = newValue;
                     }
                 }
-                goalDist[pos][goal] = value;
-                if (pos == goalCells[goal]) {
-                    goalDist[pos][goal] = 0;
-                }
             }
         }
 
@@ -492,7 +487,7 @@ public class BoardState {
         for (int pos = 0; pos < totalSize; pos++) {
             trappingCells[pos] = true;
             for (int goal = 0; goal < goalCnt; goal++) {
-                trappingCells[pos] &= goalDist[pos][goal] == INF;
+                trappingCells[pos] &= getMinimumGoalSideDistValue(pos, goal) == INF;
             }
         }
         temporaryWall = new boolean[totalSize];
@@ -507,7 +502,7 @@ public class BoardState {
         analyzeBoard(false);
     }
 
-    private String goalDistToString(int goal) {
+    public String goalDistToString(int goal) {
         StringBuilder sb = new StringBuilder();
         sb.append("Goal distance matrices for goal: " + goal + '\n');
         for (int dir = 0; dir < 4; dir++) {
@@ -516,9 +511,15 @@ public class BoardState {
                 if (isWall(pos)) {
                     sb.append(WALL_CHAR);
                 } else if (value == INF) {
-                    sb.append('X');
+                    sb.append(' ');
                 } else {
-                    sb.append(value);
+                    if (value > 35) {
+                        sb.append((char) (value + 61));
+                    } else if (value > 9) {
+                        sb.append((char) (value + 55));
+                    } else {
+                        sb.append(value);
+                    }
                 }
                 if (pos % width == width - 1) {
                     sb.append('\n');
@@ -529,28 +530,51 @@ public class BoardState {
         return sb.toString();
     }
 
-    private void computeBoxReachableSideIndexBFS(int boxPos) {
+    private int getGoalSideDistValue(int pos, int dir, int goal) {
+        return goalSideDist[pos * 4 + dir][goal];
+    }
 
-        if (boxReachableSideIndex[boxPos * 4] != -1) {
+    private int getGoalSideDistValue(int boxPos, int goal) {
+        return getGoalSideDistValue(boxPos, currentReachableBoxDir[getBoxNumber(boxPos)], goal);
+    }
+
+    private int getMinimumGoalSideDistValue(int pos, int goal) {
+        int minimumValue = goalSideDist[pos * 4 + 3][goal];
+        for (int dir = 0; dir < 3; dir++) {
+            int newValue = goalSideDist[pos * 4 + dir][goal];
+            if (newValue < minimumValue) {
+                minimumValue = newValue;
+            }
+        }
+        return minimumValue;
+    }
+
+    private void computeReachableSideIndexBFS(int startPos) {
+
+        if (boxReachableSideIndex[startPos * 4] != -1) {
+            // We have already computed sides for this boxPos
             return;
         }
         int zoneIndex = 0;
         boolean[] visitedCells = new boolean[board.length];
         for (int startDir = 0; startDir < 4; startDir++) {
-            int startPos = boxPos + dx[startDir];
-            if (!visitedCells[startPos]) {
-                boxReachableSideIndex[boxPos * 4 + startDir] = zoneIndex;
-                if (!isWall(startPos)) {
-                    visitedCells[startPos] = true;
+            int sidePos = startPos + dx[startDir];
+            if (!visitedCells[sidePos]) {
+                boxReachableSideIndex[startPos * 4 + startDir] = zoneIndex;
+                if (!isWall(sidePos)) {
+                    visitedCells[sidePos] = true;
                     LinkedList<Integer> q = new LinkedList<Integer>();
-                    q.add(startPos);
+                    q.add(sidePos);
                     while (!q.isEmpty()) {
                         int pos = q.removeFirst();
+                        if (isPlayer(pos) && isBox(startPos)) {
+                            currentReachableBoxDir[getBoxNumber(startPos)] = startDir;
+                        }
                         for (int dir = 0; dir < 4; dir++) {
                             int newPos = pos + dx[dir];
                             if (!isWall(newPos) && !visitedCells[newPos]) {
-                                if (newPos == boxPos) {
-                                    boxReachableSideIndex[boxPos * 4 + ((dir + 2) & 3)] = zoneIndex;
+                                if (newPos == startPos) {
+                                    boxReachableSideIndex[startPos * 4 + ((dir + 2) & 3)] = zoneIndex;
                                 } else {
                                     visitedCells[newPos] = true;
                                     q.add(newPos);
@@ -630,7 +654,7 @@ public class BoardState {
     }
 
     private boolean checkIfTemporaryWall(int pos) {
-        if (!isBox(pos)) return false;
+        if (!isBox(pos)) { return false; }
         if (isBlockedRectangle(pos) || isBlockedRectangle(pos - 1) || isBlockedRectangle(pos - width) || isBlockedRectangle(pos - width - 1)) {
             return true;
         }
@@ -640,7 +664,7 @@ public class BoardState {
             if (isWallOrTemporaryWall(pos + dx[dir]) || isWallOrTemporaryWall(pos + dx[oppDir])) {
                 blockedSides++;
                 int dir2 = dir + 1;
-                int oppDir2 = (dir2 + 2)&3;
+                int oppDir2 = (dir2 + 2) & 3;
                 int otherPos = pos + dx[dir2];
                 if (isBox(otherPos) && (isWallOrTemporaryWall(otherPos + dx[dir]) || isWallOrTemporaryWall(otherPos + dx[oppDir]))) {
                     return true;
@@ -731,8 +755,8 @@ public class BoardState {
         PriorityQueue<int[]> goalsWithLeastCost = new PriorityQueue<int[]>(goalCnt, new Comparator<int[]>() {
             @Override
             public int compare(int[] a, int[] b) {
-                if (a[1] > b[1]) return -1;
-                if (a[1] < b[1]) return 1;
+                if (a[1] > b[1]) { return -1; }
+                if (a[1] < b[1]) { return 1; }
                 return 0;
             }
         });
@@ -741,12 +765,12 @@ public class BoardState {
             double distSum = 0;
             int distCnt = 0;
             for (int box = 0; box < boxCnt; box++) {
-                if (goalDist[boxCells[box]][goal] < INF) {
+                if (getGoalSideDistValue(boxCells[box], goal) < INF) {
                     distCnt++;
-                    distSum += goalDist[boxCells[box]][goal];
+                    distSum += getGoalSideDistValue(boxCells[box], goal);
                 }
             }
-            goalsWithLeastCost.add(new int[] {goal, (int)(distSum / distCnt + 0.5)});
+            goalsWithLeastCost.add(new int[]{ goal, (int) (distSum / distCnt + 0.5) });
         }
         goalsInPrioOrder = new int[goalCnt];
         prioForGoal = new int[goalCnt];
@@ -761,12 +785,12 @@ public class BoardState {
             int bestBox = -1;
             for (int box = 0; box < boxCnt; box++) {
                 if (matchedGoal[box] == -1) {
-                    if (bestBox == -1 || goalDist[boxCells[box]][goal] < goalDist[boxCells[bestBox]][goal]) {
+                    if (bestBox == -1 || getGoalSideDistValue(boxCells[box], goal) < getGoalSideDistValue(boxCells[bestBox], goal)) {
                         bestBox = box;
                     }
                 }
             }
-            if (goalDist[boxCells[bestBox]][goal] < INF) {
+            if (getGoalSideDistValue(boxCells[bestBox], goal) < INF) {
                 matchedGoal[bestBox] = goal;
                 matchedBox[goal] = bestBox;
             }
@@ -778,7 +802,7 @@ public class BoardState {
             if (matchedGoal[box] == -1) {
                 Arrays.fill(visited, false);
                 for (int goal = 0; goal < goalCnt; goal++) {
-                    if (goalDist[boxPos][goal] < INF) {
+                    if (getGoalSideDistValue(boxPos, goal) < INF) {
                         if (match(goal, visited)) {
                             matchedGoal[box] = goal;
                             matchedBox[goal] = box;
@@ -800,8 +824,8 @@ public class BoardState {
             int g = matchedGoal[box];
             int boxPos2 = boxCells[otherBox];
             int g2 = matchedGoal[otherBox];
-            int oldDist = goalDist[boxPos][g] + goalDist[boxPos2][g2];
-            int newDist = goalDist[boxPos][g2] + goalDist[boxPos2][g];
+            int oldDist = getGoalSideDistValue(boxPos, g) + getGoalSideDistValue(boxPos2, g2);
+            int newDist = getGoalSideDistValue(boxPos, g2) + getGoalSideDistValue(boxPos2, g);
             if (newDist < oldDist) {// || newDist == oldDist && prioForGoal[g2] < prioForGoal[g] && goalDist[boxPos][g2] < goalDist[boxPos2][g2]) {
                 matchedGoal[box] = g2;
                 matchedGoal[otherBox] = g;
@@ -816,7 +840,7 @@ public class BoardState {
         int matchingBox = matchedBox[goal];
         int boxPos = boxCells[matchingBox];
         for (int newGoal = 0; newGoal < goalCnt; newGoal++) {
-            if (goalDist[boxPos][newGoal] < INF) {
+            if (getGoalSideDistValue(boxPos, newGoal) < INF) {
                 if (match(newGoal, visited)) {
                     matchedBox[newGoal] = matchingBox;
                     matchedGoal[matchingBox] = newGoal;
@@ -844,6 +868,7 @@ public class BoardState {
                 successful = true;
                 movedBoxesCnt++;
                 previousMove = new StackEntry(direction | 4, previousMove);
+                currentReachableBoxDir[getBoxNumber(newPos2)] = getOppositeDirection(direction);
             }
         }
         return successful;
@@ -932,6 +957,7 @@ public class BoardState {
                     if (temporaryWall[p2]) {
                         removeTemporaryWallsDfs(p2);
                     }
+                    currentReachableBoxDir[getBoxNumber(p1)] = oppositeDir;
                 }
                 movedBoxesCnt--;
             }
@@ -956,7 +982,7 @@ public class BoardState {
     public String backtrackPath() {
         StringBuilder sb = new StringBuilder();
         while (previousMove != null) {
-            previousMove.val &= (1<<22) - 1; // TODO Only temoporary
+            previousMove.val &= (1 << 22) - 1; // TODO Only temoporary
             if ((previousMove.val & 8) != 0) {
                 // Move was jump
                 // Have to search for path
@@ -1044,7 +1070,7 @@ public class BoardState {
         int res = movedBoxesCnt;
         for (int box = 0; box < boxCnt; box++) {
             if (matchedGoal[box] == -1) { return INF; }
-            res += goalDist[boxCells[box]][matchedGoal[box]];
+            res += getGoalSideDistValue(boxCells[box], matchedGoal[box]);
         }
         return res;
     }
@@ -1114,17 +1140,17 @@ public class BoardState {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (int pos = 0; pos < totalSize; pos++) {
-//            if ((tunnels[pos] & DEAD_END) == DEAD_END) {
-//                sb.append("\033[41m");
-//            } else if ((tunnels[pos] & TUNNEL) == TUNNEL) {
-//                sb.append("\033[43m");
-//            } else if ((tunnels[pos] & ROOM) == ROOM) {
-//                sb.append("\033[42m");
-//            }
+            //            if ((tunnels[pos] & DEAD_END) == DEAD_END) {
+            //                sb.append("\033[41m");
+            //            } else if ((tunnels[pos] & TUNNEL) == TUNNEL) {
+            //                sb.append("\033[43m");
+            //            } else if ((tunnels[pos] & ROOM) == ROOM) {
+            //                sb.append("\033[42m");
+            //            }
             sb.append(boardCharacters[board[pos] & 15]);
-//            if ((tunnels[pos] & TUNNEL) == TUNNEL || (tunnels[pos] & ROOM) == ROOM) {
-//                sb.append("\033[0m");
-//            }
+            //            if ((tunnels[pos] & TUNNEL) == TUNNEL || (tunnels[pos] & ROOM) == ROOM) {
+            //                sb.append("\033[0m");
+            //            }
             if (pos % width == width - 1) {
                 sb.append('\n');
             }
