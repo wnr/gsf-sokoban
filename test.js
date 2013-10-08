@@ -8,6 +8,7 @@
 
 var chalk = require('chalk');
 var exec = require('child_process').exec;
+var spawn = require('child_process').spawn;
 var fs = require('fs');
 var os = require('os');
 var ProgessBar = require('progress');
@@ -177,9 +178,9 @@ Tester.prototype.test = function(map, level, cb) {
         self.exceptions.push({
           level: parseInt(level, 10),
           test: 'Test ' + level,
-          err: err.message === 'Command failed: ' ? 'Timeout' : err.message,
+          err: err.message === 'timeout' ? 'Timeout' : err.message,
           cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
-          timeout: err.message === 'Command failed: '
+          timeout: err.message === 'timeout'
         });
       }
     }
@@ -587,9 +588,60 @@ function compile(cb) {
   execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardUtil.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
+var children = {};
+
 function test(map, timeout, cb) {
-  var child = execute('java -cp temp/out.sokoban Main', timeout, cb);
+  function clearTimer(child) {
+    clearTimeout(children[child.pid]);
+    delete children[child.pid];
+  }
+
+  function kill(child, code) {
+    clearTimer(child);
+    child.kill();
+  }
+
+  var stdout = '';
+  var stderr = '';
+  var timedout = false;
+
+  var child = spawn('java', ['-cp', 'temp/out.sokoban', 'Main'], {
+    detached: true
+  });
+
   child.stdin.write(map.replace(/^\n/, '') + (map.match(/\n$/) === null ? '\n' : '') + ';\n');
+
+  child.stdout.on('data', function(data) {
+    stdout += data;
+  });
+
+  child.stderr.on('data', function(data) {
+    stderr += data;
+  });
+
+  child.on('close', function(code) {
+    clearTimer(child);
+
+    if (timedout) {
+      cb(new Error('timeout'));
+      return;
+    }
+
+    if (code === 0) {
+      if (stderr || !stdout) {
+        cb(new Error(stderr));
+      } else {
+        cb(null, stdout);
+      }
+    } else {
+      cb(new Error(stderr));
+    }
+  });
+
+  children[child.pid] = setTimeout(function() {
+    timedout = true;
+    kill(child);
+  }, timeout);
 }
 
 function execute(job, cmd, timeout, cb) {
@@ -651,3 +703,7 @@ function execute(job, cmd, timeout, cb) {
 
   return child;
 }
+
+process.on('exit', function() {
+  console.log(children);
+});
