@@ -15,6 +15,25 @@ var ProgessBar = require('progress');
 var path = require('path');
 
 //-----------------------------------------------------------------------------
+// Process handling
+//-----------------------------------------------------------------------------
+var children = {};
+
+process.on('SIGINT', function() {
+  console.log('');
+
+  for (var index in children) {
+    if (children.hasOwnProperty(index)) {
+      var child = children[index].child;
+      console.log('killing child ' + child.pid);
+      child.kill();
+    }
+  }
+
+  process.exit();
+});
+
+//-----------------------------------------------------------------------------
 // Main execution point
 //-----------------------------------------------------------------------------
 
@@ -592,8 +611,6 @@ function compile(cb) {
   execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardUtil.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
-var children = {};
-
 function test(map, timeout, cb) {
   function clearTimer(child) {
     var obj = children[child.pid];
@@ -647,7 +664,8 @@ function test(map, timeout, cb) {
 
   children[child.pid] = {
     timer: timer,
-    time: Date.now()
+    time: Date.now(),
+    child: child
   };
 }
 
