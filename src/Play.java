@@ -126,6 +126,7 @@ public class Play {
                     if (changed) {
                         b.analyzeBoard(false);
 //                        System.out.println(b);
+                        System.out.println(b.isDeadLock() ? "Deadlock":"Not deadlock");
                         System.out.println(b.temporaryWallsToString());
                         System.out.println("Board value: " + b.getBoardValue());
                         if (!goodMove) {

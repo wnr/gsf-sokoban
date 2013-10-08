@@ -159,7 +159,8 @@ public class BoardState {
     public void analyzeBoard(boolean aggressive) {
         int boardSections[] = new int[totalSize];
 
-        computeBoardSections();
+        locateBoxes();
+
         mostUpLeftPos = playerPos;
         analyzeBoardDfs(playerPos, boardSections);
 
@@ -171,6 +172,20 @@ public class BoardState {
             int dir = directionLastMove();
             lastMovedBoxPos = playerPos + dx[dir];
             lastMovedBoxIndex = getBoxNumber(lastMovedBoxPos);
+
+            boolean checkDeadlock = false;
+            if (!isGoal(lastMovedBoxPos)) {
+                for (int d = 0; d < 4; d++) {
+                    int adjacentBoxPos = lastMovedBoxPos + dx[d];
+                    if (isFree(adjacentBoxPos) && trappingCells[adjacentBoxPos]) {
+                        checkDeadlock = true;
+                    }
+                }
+            }
+            if (checkDeadlock && isDeadLock()) {
+                possibleJumpPositions = null;
+                return;
+            }
 
             addTemporaryWallsDfs(lastMovedBoxPos);
             updateMatchingForBox(lastMovedBoxIndex);
@@ -226,6 +241,44 @@ public class BoardState {
         int i = 0;
         for (int move : moves) {
             possibleJumpPositions[i++] = move;
+        }
+    }
+
+    public boolean isDeadLock() {
+        boolean[] reachable = new boolean[totalSize];
+        checkDeadlockDfs(playerPos, reachable);
+        boolean deadLock = false;
+        for (int box = 0; box < boxCnt; box++) {
+            int boxPos = boxCells[box];
+            int goal = matchedGoal[box];
+            if (!isGoal(boxPos)) {
+                boolean good = false;
+                for (int dir = 0; dir < 4; dir++) {
+                    int pos = boxPos + dx[dir];
+                    int oppPos = boxPos + dx[getOppositeDirection(dir)];
+                    if (reachable[pos] && !trappingCells[oppPos] && (isFree(oppPos) || isBox(oppPos) && reachable[oppPos])) {
+                        good = true;
+                    }
+                }
+                if (!good) deadLock = true;
+            }
+        }
+        return deadLock;
+    }
+
+    private void checkDeadlockDfs(int pos, boolean[] reachable) {
+        if (reachable[pos]) return;
+        reachable[pos] = true;
+        for (int dir = 0; dir < 4; dir++) {
+            int newPos = pos + dx[dir];
+            if (isFree(newPos)) {
+                checkDeadlockDfs(newPos, reachable);
+            } else if (isBox(newPos)) {
+                int newPos2 = newPos + dx[dir];
+                if ((isFree(newPos2) || reachable[newPos2]) && !trappingCells[newPos2]) {
+                    checkDeadlockDfs(newPos, reachable);
+                }
+            }
         }
     }
 
@@ -338,7 +391,7 @@ public class BoardState {
         }
     }
 
-    private void computeBoardSections() {
+    private void locateBoxes() {
         int boxIndex = 0;
         for (int pos = 0; pos < totalSize; pos++) {
             if (isBox(pos)) {
