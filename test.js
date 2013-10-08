@@ -171,7 +171,7 @@ Tester.prototype.test = function(map, level, cb) {
 
       if (err) {
         self.exceptions.push({
-          level: parseInt(level, 10),
+          level: level,
           test: 'Test ' + level,
           err: err.message === 'timeout' ? 'Timeout' : err.message,
           cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
@@ -192,7 +192,7 @@ Tester.prototype.test = function(map, level, cb) {
       } catch (e) {
         self.failed++;
         self.exceptions.push({
-          level: parseInt(level, 10),
+          level: level,
           test: 'Test ' + level,
           err: 'Result: ' + result + '\nException: ' + e,
           cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
