@@ -8,3 +8,6 @@ full:
 
 test:
 	@node test.js 25 11
+
+kattis:
+	@node test.js test-kattis.data

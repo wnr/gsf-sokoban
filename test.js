@@ -19,55 +19,72 @@ var path = require('path');
 
 var config = {
   tests: Infinity,
-  timeout: 11*1000,
+  file: 'test.data',
+  timeout: 11 * 1000,
   cores: os.cpus().length
 };
 
-if(process.argv[2] !== undefined) {
-  config.tests = parseInt(process.argv[2], 10);
+if (process.argv[2] !== undefined) {
+  if (parseInt(process.argv[2], 10)) {
+    config.tests = parseInt(process.argv[2], 10);
+  } else {
+    config.file = process.argv[2];
+  }
 }
 
-if(process.argv[3] !== undefined) {
-  config.timeout = parseInt(process.argv[3], 10)*1000;
+if (process.argv[3] !== undefined) {
+  config.timeout = parseInt(process.argv[3], 10) * 1000;
 }
 
-if(process.argv[4] !== undefined) {
+if (process.argv[4] !== undefined) {
   config.cores = parseInt(process.argv[4], 10);
 }
 
 printHeader('Google Search First Sokoban Test');
 
 removeDir('temp', function(err) {
-  if(err) { throw err; }
+  if (err) {
+    throw err;
+  }
 
   createDir('temp', function(err) {
-    if(err) { throw err; }
+    if (err) {
+      throw err;
+    }
 
     createDir(path.normalize('temp/out.sokoban'), function(err) {
-      if(err) { throw err; }
+      if (err) {
+        throw err;
+      }
 
       compile(function(err) {
-        if(err) { throw err; }
+        if (err) {
+          throw err;
+        }
 
         readTestData('samples.data', function(err, samples) {
-          if(err) { throw err; }
+          if (err) {
+            throw err;
+          }
 
           var tester = new Tester(samples, config.timeout, true, config.cores);
 
           printJob('Testing samples');
           tester.run(function done() {
-            if(tester.failed > 0) {
+            if (tester.failed > 0) {
               printJobFailed();
               tester.printExceptions(true);
             } else {
               printJobDone();
 
-              if(config.tests === 0) {
+              if (config.tests === 0) {
                 return;
               }
 
-              readTestData('test.data', config.tests, function(err, tests) {
-                if(err) { throw err; }
+              readTestData(config.file, config.tests, function(err, tests) {
+                if (err) {
+                  throw err;
+                }
 
                 var tester = new Tester(tests, config.timeout, false, config.cores);
                 tester.run(function done() {
@@ -93,8 +110,9 @@ removeDir('temp', function(err) {
 /**
  * Tester
  */
- function Tester(maps, timeout, silent, cpus) {
-  if(!Array.isArray(maps)) {
+
+function Tester(maps, timeout, silent, cpus) {
+  if (!Array.isArray(maps)) {
     throw new Error('Maps data required');
   }
 
@@ -111,7 +129,7 @@ removeDir('temp', function(err) {
   this.timeout = timeout || 0;
   this.silent = silent || false;
 
-  if(!silent) {
+  if (!silent) {
     this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
       width: (this.tests <= 100 ? this.tests : 100) + 1,
       total: this.tests,
@@ -122,18 +140,18 @@ removeDir('temp', function(err) {
 }
 
 Tester.prototype.run = function(cb) {
-  if(!this.silent) {
+  if (!this.silent) {
     console.log('\n' + chalk.yellow(this.tests + ' tests to be executed by ' + this.cpus + ' core' + (this.cpus === 1 ? '' : 's') + '.') + '\n');
   }
 
-  for(var i = 0; i < this.cpus && i < this.tests; i++) {
+  for (var i = 0; i < this.cpus && i < this.tests; i++) {
     var m = this.maps.shift();
     this.test(m.map, m.level, cb);
   }
 };
 
 Tester.prototype.isDone = function() {
-  if(this.executed >= this.tests) {
+  if (this.executed >= this.tests) {
     this.elapsed = Date.now() - this.time;
     return true;
   }
@@ -152,10 +170,10 @@ Tester.prototype.test = function(map, level, cb) {
     self.running--;
     self.executed++;
 
-    if(err || !result) {
+    if (err || !result) {
       self.failed++;
 
-      if(err) {
+      if (err) {
         self.exceptions.push({
           level: parseInt(level, 10),
           test: 'Test ' + level,
@@ -166,45 +184,45 @@ Tester.prototype.test = function(map, level, cb) {
       }
     }
 
-    if(result && !err) {
+    if (result && !err) {
       var walker = new Walker(map);
 
       try {
-        if(walker.goByString(result.replace(/\n|\r/g, '')).isSolved()) {
+        if (walker.goByString(result.replace(/\n|\r/g, '')).isSolved()) {
           self.passed.push(new self.TestResult(level, Date.now() - time));
         } else {
           self.failed++;
         }
-      } catch(e) {
+      } catch (e) {
         self.failed++;
         self.exceptions.push({
           level: parseInt(level, 10),
           test: 'Test ' + level,
           err: 'Result: ' + result + '\nException: ' + e,
           cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
-       });
+        });
       }
     }
 
-    if(self.bar) {
+    if (self.bar) {
       self.bar.tick();
     }
 
-    if(self.isDone()) {
-      if(cb) {
+    if (self.isDone()) {
+      if (cb) {
         cb();
       }
     } else {
-      if(self.running < self.cpus && self.executed + self.running < self.tests) {
+      if (self.running < self.cpus && self.executed + self.running < self.tests) {
         var test = self.maps.shift();
-        self.test(test.map,  test.level, cb);
+        self.test(test.map, test.level, cb);
       }
     }
   });
 };
 
 Tester.prototype.printExceptions = function(cmd, timeouts) {
-  if(!cmd) {
+  if (!cmd) {
     cmd = false;
   }
 
@@ -212,16 +230,16 @@ Tester.prototype.printExceptions = function(cmd, timeouts) {
 
   var e = this.exceptions;
 
-  if(!timeouts) {
+  if (!timeouts) {
     e = e.filter(function(o) {
       return !o.timeout;
     });
   }
 
-  if(e.length) {
+  if (e.length) {
     printHeader('Exceptions', chalk.red);
 
-    for(var i = 0; i < e.length; i++) {
+    for (var i = 0; i < e.length; i++) {
       console.log(chalk.red(e[i].test) + '\n' + e[i].err + (cmd ? '\n' + chalk.yellow('Test with: ' + e[i].cmd) : ''));
     }
   }
@@ -230,22 +248,22 @@ Tester.prototype.printExceptions = function(cmd, timeouts) {
 Tester.prototype.printResults = function() {
   var passedTime = 0;
 
-  for(var i = 0; i < this.passed.length; i++) {
-    if(this.passed[i].time) {
+  for (var i = 0; i < this.passed.length; i++) {
+    if (this.passed[i].time) {
       passedTime += this.passed[i].time;
     }
   }
 
   console.log('');
   console.log('Total:    ' + this.bar.total);
-  console.log('Passed:   ' + chalk.green(this.passed.length.toString() + (passedTime > 0 ? ' (' + passedTime/1000 + ' s)' : '')));
+  console.log('Passed:   ' + chalk.green(this.passed.length.toString() + (passedTime > 0 ? ' (' + passedTime / 1000 + ' s)' : '')));
   console.log('Failed:   ' + chalk.red(this.failed.toString()));
   console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
 };
 
 Tester.prototype.printPassed = function() {
   var p = this.passed.sort(function(a, b) {
-    if(a.level < b.level) {
+    if (a.level < b.level) {
       return -1
     }
 
@@ -254,8 +272,8 @@ Tester.prototype.printPassed = function() {
 
   var str = '\nPassed:';
 
-  for(var i = 0; i < p.length; i++) {
-    str += '\n' + p[i].level + (p[i].time ? '\t  (' + p[i].time/1000 + ' s)' : '') + ' ';
+  for (var i = 0; i < p.length; i++) {
+    str += '\n' + p[i].level + (p[i].time ? '\t  (' + p[i].time / 1000 + ' s)' : '') + ' ';
   }
 
   console.log(chalk.green(str));
@@ -264,14 +282,14 @@ Tester.prototype.printPassed = function() {
 Tester.prototype.printVisual = function() {
   var visuals = [];
 
-  for(var i = 0; i < this.passed.length; i++) {
+  for (var i = 0; i < this.passed.length; i++) {
     visuals.push({
       level: this.passed[i].level,
       passed: true
     });
   }
 
-  for(i = 0; i < this.exceptions.length; i++) {
+  for (i = 0; i < this.exceptions.length; i++) {
     visuals.push({
       level: this.exceptions[i].level,
       passed: false,
@@ -280,7 +298,7 @@ Tester.prototype.printVisual = function() {
   }
 
   visuals = visuals.sort(function(a, b) {
-    if(a.level < b.level) {
+    if (a.level < b.level) {
       return -1;
     }
 
@@ -289,8 +307,8 @@ Tester.prototype.printVisual = function() {
 
   var str = '\n';
 
-  for(i = 0; i < visuals.length; i++) {
-    if(visuals[i].passed) {
+  for (i = 0; i < visuals.length; i++) {
+    if (visuals[i].passed) {
       str += chalk.bgGreen.black(' ' + visuals[i].level + ' ');
     } else {
       str += chalk.bgRed.black(' ' + visuals[i].level + ' ');
@@ -304,16 +322,16 @@ Tester.prototype.printTimeouts = function() {
   var timeouts = this.exceptions.filter(function(o) {
     return o.timeout;
   }).sort(function(a, b) {
-    if(a.level < b.level) {
+    if (a.level < b.level) {
       return -1;
     }
 
     return 1;
   });
 
-  var str = '\nTimeouts (' + this.timeout/1000 + ' s):\n';
+  var str = '\nTimeouts (' + this.timeout / 1000 + ' s):\n';
 
-  for(var i = 0; i < timeouts.length; i++) {
+  for (var i = 0; i < timeouts.length; i++) {
     str += timeouts[i].level + ' ';
   }
 
@@ -328,8 +346,9 @@ Tester.prototype.TestResult = function(level, time) {
 /**
  * Walker
  */
- function Walker(map) {
-  if(map) {
+
+function Walker(map) {
+  if (map) {
     this.map = this.parseMap(map);
   }
 }
@@ -343,13 +362,13 @@ Walker.prototype.Position = function(x, y) {
 
 Walker.prototype.parseMap = function(map) {
   function indexOfEither(object, searches) {
-    if(!object || typeof object.indexOf !== 'function') {
+    if (!object || typeof object.indexOf !== 'function') {
       throw new Error('Invalid object to search in.');
     }
 
-    for(var i = 0; i < searches.length; i++) {
+    for (var i = 0; i < searches.length; i++) {
       var r = object.indexOf(searches[i]);
-      if(~r) {
+      if (~r) {
         return r;
       }
     }
@@ -357,7 +376,7 @@ Walker.prototype.parseMap = function(map) {
     return -1;
   }
 
-  if(typeof map !== 'string') {
+  if (typeof map !== 'string') {
     throw new Error('Unsupported map type.');
   }
 
@@ -367,15 +386,15 @@ Walker.prototype.parseMap = function(map) {
     return e.split('');
   });
 
-  for(var y = 0; y < m.length; y++) {
+  for (var y = 0; y < m.length; y++) {
     var x = indexOfEither(m[y], '@+');
 
-    if(~x) {
+    if (~x) {
       this.player = new this.Position(x, y);
     }
   }
 
-  if(!this.player) {
+  if (!this.player) {
     throw new Error('Unable to find player in map:\n' + map);
   }
 
@@ -383,8 +402,8 @@ Walker.prototype.parseMap = function(map) {
 };
 
 Walker.prototype.isSolved = function() {
-  for(var i = 0; i < this.map.length; i++) {
-    if(~this.map[i].indexOf('@')) {
+  for (var i = 0; i < this.map.length; i++) {
+    if (~this.map[i].indexOf('@')) {
       return false;
     }
   }
@@ -393,12 +412,14 @@ Walker.prototype.isSolved = function() {
 };
 
 Walker.prototype.goByString = function(string) {
-  if(typeof string !== 'string') {
+  if (typeof string !== 'string') {
     throw new Error('Invalid arguments');
   }
 
-  for(var i = 0; i < string.length; i++) {
-    if(string[i] === ' ') { continue; }
+  for (var i = 0; i < string.length; i++) {
+    if (string[i] === ' ') {
+      continue;
+    }
 
     this.go(this.player, string[i]);
   }
@@ -407,7 +428,7 @@ Walker.prototype.goByString = function(string) {
 };
 
 Walker.prototype.go = function(from, dir) {
-  if(!from || !dir) {
+  if (!from || !dir) {
     throw new Error('Invalid arguments.');
   }
 
@@ -415,22 +436,22 @@ Walker.prototype.go = function(from, dir) {
 
   var np = this.map[to.y][to.x];
 
-  if(np === '#') {
+  if (np === '#') {
     throw new Error('Invalid move.');
   }
 
-  if(np === '$' || np === '*') {
+  if (np === '$' || np === '*') {
     var to2 = this.dirToPos(to, dir);
     this.moveBox(to, to2);
-  } else if(np === ' ') {
+  } else if (np === ' ') {
     this.map[to.y][to.x] = '@';
-  } else if(np === '.') {
+  } else if (np === '.') {
     this.map[to.y][to.x] = '+';
   } else {
     throw new Error('Unknown error.');
   }
 
-  if(this.map[from.y][from.x] === '@') {
+  if (this.map[from.y][from.x] === '@') {
     this.map[from.y][from.x] = ' ';
   } else {
     this.map[from.y][from.x] = '.';
@@ -441,19 +462,19 @@ Walker.prototype.go = function(from, dir) {
 };
 
 Walker.prototype.dirToPos = function(from, dir) {
-  if(!from) {
+  if (!from) {
     throw new Error('Invalid arguments.');
   }
 
   var n = new this.Position(from.x, from.y);
 
-  if(dir === 'R') {
+  if (dir === 'R') {
     n.x++;
-  } else if(dir === 'L') {
+  } else if (dir === 'L') {
     n.x--;
-  } else if(dir === 'D') {
+  } else if (dir === 'D') {
     n.y++;
-  } else if(dir === 'U') {
+  } else if (dir === 'U') {
     n.y--;
   } else {
     throw new Error('Invalid direction.');
@@ -463,21 +484,21 @@ Walker.prototype.dirToPos = function(from, dir) {
 };
 
 Walker.prototype.moveBox = function(from, to) {
-  if(!from || !to) {
+  if (!from || !to) {
     throw new Error('Invalid arguments.');
   }
 
   var np = this.map[to.y][to.x];
 
-  if(np === ' ') {
+  if (np === ' ') {
     this.map[to.y][to.x] = '$';
-  } else if(np === '.') {
+  } else if (np === '.') {
     this.map[to.y][to.x] = '*';
   } else {
     throw new Error('Invalid move');
   }
 
-  if(this.map[from.y][from.x] === '$') {
+  if (this.map[from.y][from.x] === '$') {
     this.map[from.y][from.x] = ' ';
   } else {
     this.map[from.y][from.x] = '.';
@@ -489,18 +510,18 @@ Walker.prototype.moveBox = function(from, to) {
 //-----------------------------------------------------------------------------
 
 function readTestData(file, limit, cb) {
-  if(typeof limit === 'function') {
+  if (typeof limit === 'function') {
     cb = limit;
     limit = Infinity;
   }
 
-  if(!cb) {
+  if (!cb) {
     throw new Error('Callback required.');
   }
 
   printJob('Reading test data ' + file);
   fs.readFile(file, 'utf8', function(err, data) {
-    if(err) {
+    if (err) {
       printJobFailed();
       cb(err);
       return;
@@ -509,7 +530,7 @@ function readTestData(file, limit, cb) {
     var result = data.split(/;LEVEL \d+/).splice(1, limit);
     var levels = data.match(/\d+/g);
 
-    for(var i = 0; i < result.length; i++) {
+    for (var i = 0; i < result.length; i++) {
       result[i] = {
         level: levels[i],
         map: result[i].replace(/\r/g, '')
@@ -525,12 +546,12 @@ function readTestData(file, limit, cb) {
 function printHeader(str, color) {
   var length = 50;
 
-  if(!color) {
+  if (!color) {
     color = chalk.yellow;
   }
 
-  var leftSpace = new Array(length/2 - 1 - Math.floor(str.length/2)).join(' ');
-  var rightSpace = new Array(length/2 - leftSpace - Math.ceil(str.length/2)).join(' ');
+  var leftSpace = new Array(length / 2 - 1 - Math.floor(str.length / 2)).join(' ');
+  var rightSpace = new Array(length / 2 - leftSpace - Math.ceil(str.length / 2)).join(' ');
 
   console.log('\n' + color(new Array(length).join('#')));
   console.log(color('#') + leftSpace + str + rightSpace + color('#'));
@@ -572,44 +593,46 @@ function test(map, timeout, cb) {
 }
 
 function execute(job, cmd, timeout, cb) {
-  if(!cmd) {
+  if (!cmd) {
     cmd = job;
     job = null;
   }
 
-  if(typeof cmd === 'function') {
+  if (typeof cmd === 'function') {
     cb = cmd;
     cmd = job;
     job = null;
   }
 
-  if(typeof cmd === 'number') {
+  if (typeof cmd === 'number') {
     cb = timeout;
     timeout = cmd;
     cmd = job;
     job = null;
   }
 
-  if(typeof timeout === 'function') {
+  if (typeof timeout === 'function') {
     cb = timeout;
     timeout = null;
   }
 
-  if(job) {
+  if (job) {
     printJob(job);
   }
 
-  if(!timeout) {
+  if (!timeout) {
     timeout = 0;
   }
 
-  var child = exec(cmd, {timeout: timeout}, function(err, stdout, stderr) {
-    if(err || stderr) {
-      if(job) {
+  var child = exec(cmd, {
+    timeout: timeout
+  }, function(err, stdout, stderr) {
+    if (err || stderr) {
+      if (job) {
         printJobFailed();
       }
 
-      if(cb) {
+      if (cb) {
         cb(err || new Error(stderr));
         return;
       } else {
@@ -617,11 +640,11 @@ function execute(job, cmd, timeout, cb) {
       }
     }
 
-    if(job) {
+    if (job) {
       printJobDone();
     }
 
-    if(cb) {
+    if (cb) {
       cb(null, stdout);
     }
   });
