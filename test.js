@@ -15,6 +15,25 @@ var ProgessBar = require('progress');
 var path = require('path');
 
 //-----------------------------------------------------------------------------
+// Process handling
+//-----------------------------------------------------------------------------
+var children = {};
+
+process.on('SIGINT', function() {
+  console.log('');
+
+  for (var index in children) {
+    if (children.hasOwnProperty(index)) {
+      var child = children[index].child;
+      console.log('killing child ' + child.pid);
+      child.kill();
+    }
+  }
+
+  process.exit();
+});
+
+//-----------------------------------------------------------------------------
 // Main execution point
 //-----------------------------------------------------------------------------
 
@@ -124,14 +143,12 @@ function Tester(maps, timeout, silent, cpus) {
   this.failed = 0;
   this.running = 0;
   this.exceptions = [];
-  this.elapsed = 0;
   this.cpus = cpus || 1;
-  this.time = Date.now();
   this.timeout = timeout || 0;
   this.silent = silent || false;
 
   if (!silent) {
-    this.bar = new ProgessBar('[:bar] :current/:total (:percent) :elapsed s', {
+    this.bar = new ProgessBar('[:bar] :current/:total (:percent)', {
       width: (this.tests <= 100 ? this.tests : 100) + 1,
       total: this.tests,
       complete: '>',
@@ -153,7 +170,6 @@ Tester.prototype.run = function(cb) {
 
 Tester.prototype.isDone = function() {
   if (this.executed >= this.tests) {
-    this.elapsed = Date.now() - this.time;
     return true;
   }
 
@@ -165,9 +181,7 @@ Tester.prototype.test = function(map, level, cb) {
 
   var self = this;
 
-  var time = Date.now();
-
-  test(map, this.timeout, function(err, result) {
+  test(map, this.timeout, function(err, result, time) {
     self.running--;
     self.executed++;
 
@@ -176,7 +190,7 @@ Tester.prototype.test = function(map, level, cb) {
 
       if (err) {
         self.exceptions.push({
-          level: parseInt(level, 10),
+          level: level,
           test: 'Test ' + level,
           err: err.message === 'timeout' ? 'Timeout' : err.message,
           cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
@@ -190,14 +204,14 @@ Tester.prototype.test = function(map, level, cb) {
 
       try {
         if (walker.goByString(result.replace(/\n|\r/g, '')).isSolved()) {
-          self.passed.push(new self.TestResult(level, Date.now() - time));
+          self.passed.push(new self.TestResult(level, time));
         } else {
           self.failed++;
         }
       } catch (e) {
         self.failed++;
         self.exceptions.push({
-          level: parseInt(level, 10),
+          level: level,
           test: 'Test ' + level,
           err: 'Result: ' + result + '\nException: ' + e,
           cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
@@ -255,17 +269,26 @@ Tester.prototype.printResults = function() {
     }
   }
 
+  var average = passedTime / this.passed.length;
+  var median = this.passed.map(function(e) {
+    return e.time;
+  }).sort()[Math.floor(this.passed.length / 2)];
+
+  console.log(median);
+
   console.log('');
   console.log('Total:    ' + this.bar.total);
   console.log('Passed:   ' + chalk.green(this.passed.length.toString() + (passedTime > 0 ? ' (' + passedTime / 1000 + ' s)' : '')));
   console.log('Failed:   ' + chalk.red(this.failed.toString()));
-  console.log('Time:     ' + chalk.yellow((this.elapsed / 1000).toFixed(1) + ' s'));
+  console.log('');
+  console.log('Average passed time: ' + (average / 1000).toFixed(2) + ' s');
+  console.log('Median passed time:  ' + (median / 1000).toFixed(2) + ' s');
 };
 
 Tester.prototype.printPassed = function() {
   var p = this.passed.sort(function(a, b) {
     if (a.level < b.level) {
-      return -1
+      return -1;
     }
 
     return 1;
@@ -317,7 +340,7 @@ Tester.prototype.printVisual = function() {
   }
 
   console.log(str);
-}
+};
 
 Tester.prototype.printTimeouts = function() {
   var timeouts = this.exceptions.filter(function(o) {
@@ -588,17 +611,13 @@ function compile(cb) {
   execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardUtil.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
-var children = {};
-
 function test(map, timeout, cb) {
   function clearTimer(child) {
-    clearTimeout(children[child.pid]);
+    var obj = children[child.pid];
+    var elapsed = Date.now() - obj.time;
+    clearTimeout(obj.timer);
     delete children[child.pid];
-  }
-
-  function kill(child, code) {
-    clearTimer(child);
-    child.kill();
+    return elapsed;
   }
 
   var stdout = '';
@@ -620,7 +639,7 @@ function test(map, timeout, cb) {
   });
 
   child.on('close', function(code) {
-    clearTimer(child);
+    var elapsed = clearTimer(child);
 
     if (timedout) {
       cb(new Error('timeout'));
@@ -631,17 +650,23 @@ function test(map, timeout, cb) {
       if (stderr || !stdout) {
         cb(new Error(stderr));
       } else {
-        cb(null, stdout);
+        cb(null, stdout, elapsed);
       }
     } else {
       cb(new Error(stderr));
     }
   });
 
-  children[child.pid] = setTimeout(function() {
+  var timer = setTimeout(function() {
     timedout = true;
-    kill(child);
+    child.kill();
   }, timeout);
+
+  children[child.pid] = {
+    timer: timer,
+    time: Date.now(),
+    child: child
+  };
 }
 
 function execute(job, cmd, timeout, cb) {
@@ -703,7 +728,3 @@ function execute(job, cmd, timeout, cb) {
 
   return child;
 }
-
-process.on('exit', function() {
-  console.log(children);
-});
