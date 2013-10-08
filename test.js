@@ -250,10 +250,20 @@ Tester.prototype.printResults = function() {
     }
   }
 
+  var average = passedTime / this.passed.length;
+  var median = this.passed.map(function(e) {
+    return e.time;
+  }).sort()[Math.floor(this.passed.length / 2)];
+
+  console.log(median);
+
   console.log('');
   console.log('Total:    ' + this.bar.total);
   console.log('Passed:   ' + chalk.green(this.passed.length.toString() + (passedTime > 0 ? ' (' + passedTime / 1000 + ' s)' : '')));
   console.log('Failed:   ' + chalk.red(this.failed.toString()));
+  console.log('');
+  console.log('Average passed time: ' + (average / 1000).toFixed(2) + ' s');
+  console.log('Median passed time:  ' + (median / 1000).toFixed(2) + ' s');
 };
 
 Tester.prototype.printPassed = function() {
