@@ -126,6 +126,7 @@ public class Main {
 
     private static boolean dfs(BoardState board, int depth, int maxValue, boolean aggressive) {
         visitedStates++;
+//        board.moveLatestBoxToGoalIfPossible(); TODO Only use this if density is low
         if (board.isBoardSolved()) {
             res = board.backtrackPath();
             return true;

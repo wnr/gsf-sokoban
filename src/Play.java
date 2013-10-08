@@ -84,6 +84,9 @@ public class Play {
                         case KeyEvent.VK_SPACE:
                             changed = b.reverseMove();
                             break;
+                        case KeyEvent.VK_M:
+                            changed = b.moveLatestBoxToGoalIfPossible();
+                            break;
                         case KeyEvent.VK_BACK_SPACE:
                             String path = b.backtrackPath();
                             if (path.length() > 0) {
@@ -122,7 +125,7 @@ public class Play {
                     }
                     if (changed) {
                         b.analyzeBoard(false);
-                        System.out.println(b);
+//                        System.out.println(b);
                         System.out.println(b.temporaryWallsToString());
                         System.out.println("Board value: " + b.getBoardValue());
                         if (!goodMove) {

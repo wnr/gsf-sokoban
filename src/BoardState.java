@@ -218,6 +218,88 @@ public class BoardState {
         }
     }
 
+    public boolean moveLatestBoxToGoalIfPossible() {
+        if (!movedBoxLastMove()) return false;
+        int boxPos = playerPos + dx[directionLastMove()];
+        int boxIndex = getBoxNumber(boxPos);
+        int goal = matchedGoal[boxIndex];
+        if (goalDist[boxPos][goal] == 0) return false;
+        LinkedList<Integer> moves = new LinkedList<Integer>();
+        board[boxPos] &= ~BOX;
+        boolean possible = moveBoxToGoalDfs(playerPos, directionLastMove(), goal, moves);
+        board[boxPos] |= BOX;
+        if (possible) {
+            for (int move : moves) {
+                if ((move & 8) != 0) {
+                    performJump(move >>> 4);
+                } else {
+                    performMove(move&3);
+                }
+            }
+            previousMove.val |= moves.size() << 22;
+            return true;
+        }
+        return false;
+    }
+
+    private boolean moveBoxToGoalDfs(int pos, int forward, int goal, LinkedList<Integer> moves) {
+        int boxPos = pos + dx[forward];
+        if (goalDist[boxPos][goal] == 0) return true;
+        int left = forward == 0 ? 3 : forward - 1;
+        int right = (forward + 1)&3;
+        int backward = (forward + 2)&3;
+        boolean[] reachable = new boolean[4];
+        reachable[backward] = true;
+
+        // Try walking to the left of the box
+        if (checkIfFreePath(pos, new int[] {left, forward})) {
+            reachable[left] = true;
+            if (checkIfFreePath(boxPos + dx[left], new int[] {forward, right})) {
+                reachable[forward] = true;
+                if (checkIfFreePath(boxPos + dx[forward], new int[] {right, backward})) {
+                    reachable[right] = true;
+                }
+            }
+        }
+
+        // Try walking to the right of the box
+        if (checkIfFreePath(pos, new int[] {right, forward})) {
+            reachable[right] = true;
+            if (checkIfFreePath(boxPos + dx[right], new int[] {forward, left})) {
+                reachable[forward] = true;
+                if (checkIfFreePath(boxPos + dx[forward], new int[] {left, backward})) {
+                    reachable[left] = true;
+                }
+            }
+        }
+        for (int i = 0; i < 4; i++) {
+            if (reachable[i]) {
+                int moveDir = (i + 2)&3;
+                int newBoxPos = boxPos + dx[moveDir];
+                if (isFree(newBoxPos) && goalSideDist[4*newBoxPos + i][goal] < goalSideDist[4*boxPos + i][goal]) {
+                    boolean possible = moveBoxToGoalDfs(boxPos, moveDir, goal, moves);
+                    if (possible) {
+                        moves.addFirst(4 | moveDir);
+                        if (i != backward) {
+                            moves.addFirst(8 | (boxPos + dx[i]) << 4);
+                        }
+                    }
+                    return possible;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean checkIfFreePath(int pos, int[] moves) {
+        if (!isFree(pos)) return false;
+        for (int move : moves) {
+            pos += dx[move];
+            if (!isFree(pos)) return false;
+        }
+        return true;
+    }
+
     private boolean checkIfGoalsStillReachable() {
         boolean[] reachable = new boolean[totalSize];
         for (int box = 0; box < boxCnt; box++) {
@@ -335,6 +417,9 @@ public class BoardState {
                     }
                 }
                 goalDist[pos][goal] = value;
+                if (pos == goalCells[goal]) {
+                    goalDist[pos][goal] = 0;
+                }
             }
         }
 
@@ -756,34 +841,38 @@ public class BoardState {
     }
 
     /*
-     * previousMove has the following format (bits 0-indexed:
+     * previousMove has the following format (bits 0-indexed):
      * Bits 0 and 1 together contain the direction of the move
      * Bit 2 decides whether a board was pushed by the move or not
      * If bit 3 is set, the move was a jump, and bits 0-2 can be ignored.
-     * Bits 4 and up contain the position that the jump was made from
+     * Bits 4-21 contain the position that the jump was made from
+     * Bits 22 and up determine how many more moves that should be reversed at the same time
      */
     public boolean reverseMove() {
         if (previousMove == null) { return false; }
-        if ((previousMove.val & 8) != 0) {
-            // Move was jump
-            movePlayer(previousMove.val >> 4);
-        } else {
-            boolean movedBox = (previousMove.val & 4) != 0;
-            int dir = previousMove.val & 3;
-            int oppositeDir = getOppositeDirection(dir);
-            int p1 = playerPos;
-            int p0 = p1 + dx[oppositeDir];
-            movePlayer(p0);
-            if (movedBox) {
-                int p2 = p1 + dx[dir];
-                moveBox(p2, p1);
-                if (temporaryWall[p2]) {
-                    removeTemporaryWallsDfs(p2);
+        int reverseCount = (previousMove.val >>> 22) + 1;
+        for (int i = 0; i < reverseCount; i++) {
+            if ((previousMove.val & 8) != 0) {
+                // Move was jump
+                movePlayer(previousMove.val >>> 4);
+            } else {
+                boolean movedBox = (previousMove.val & 4) != 0;
+                int dir = previousMove.val & 3;
+                int oppositeDir = getOppositeDirection(dir);
+                int p1 = playerPos;
+                int p0 = p1 + dx[oppositeDir];
+                movePlayer(p0);
+                if (movedBox) {
+                    int p2 = p1 + dx[dir];
+                    moveBox(p2, p1);
+                    if (temporaryWall[p2]) {
+                        removeTemporaryWallsDfs(p2);
+                    }
                 }
+                movedBoxesCnt--;
             }
-            movedBoxesCnt--;
+            previousMove = previousMove.prev;
         }
-        previousMove = previousMove.prev;
         return true;
     }
 
@@ -803,10 +892,11 @@ public class BoardState {
     public String backtrackPath() {
         StringBuilder sb = new StringBuilder();
         while (previousMove != null) {
+            previousMove.val &= (1<<22) - 1; // TODO Only temoporary
             if ((previousMove.val & 8) != 0) {
                 // Move was jump
                 // Have to search for path
-                int startPos = previousMove.val >> 4;
+                int startPos = previousMove.val >>> 4;
                 int[] prev = new int[totalSize];
                 Arrays.fill(prev, -2);
                 LinkedList<Integer> q = new LinkedList<Integer>();
@@ -952,17 +1042,17 @@ public class BoardState {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (int pos = 0; pos < totalSize; pos++) {
-            if ((tunnels[pos] & DEAD_END) == DEAD_END) {
-                sb.append("\033[41m");
-            } else if ((tunnels[pos] & TUNNEL) == TUNNEL) {
-                sb.append("\033[43m");
-            } else if ((tunnels[pos] & ROOM) == ROOM) {
-                sb.append("\033[42m");
-            }
+//            if ((tunnels[pos] & DEAD_END) == DEAD_END) {
+//                sb.append("\033[41m");
+//            } else if ((tunnels[pos] & TUNNEL) == TUNNEL) {
+//                sb.append("\033[43m");
+//            } else if ((tunnels[pos] & ROOM) == ROOM) {
+//                sb.append("\033[42m");
+//            }
             sb.append(boardCharacters[board[pos] & 15]);
-            if ((tunnels[pos] & TUNNEL) == TUNNEL || (tunnels[pos] & ROOM) == ROOM) {
-                sb.append("\033[0m");
-            }
+//            if ((tunnels[pos] & TUNNEL) == TUNNEL || (tunnels[pos] & ROOM) == ROOM) {
+//                sb.append("\033[0m");
+//            }
             if (pos % width == width - 1) {
                 sb.append('\n');
             }
@@ -996,6 +1086,6 @@ public class BoardState {
     }
 
     public int getBoxNumber(int pos) {
-        return board[pos] >> 4;
+        return board[pos] >>> 4;
     }
 }
