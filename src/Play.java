@@ -118,10 +118,6 @@ public class Play {
                     if (move >= 0) {
                         goodMove = b.isGoodMove(move);
                         changed = b.performMove(move);
-                        if(changed && b.movedBoxLastMove()){
-                            b.initializeBoxToGoalMapping();
-                            System.out.println("Moved box number: " + b.getBoxIndexInDirection(b.directionLastMove()));
-                        }
                     }
                     if (changed) {
                         b.analyzeBoard(false);

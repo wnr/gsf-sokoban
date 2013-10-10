@@ -9,7 +9,7 @@ import java.util.PriorityQueue;
 public class BoardState {
 
     public static final int    INF               = 100000000;
-    public static final double DENSE_BOARD_LIMIT = 0.15;
+    public static final double DENSE_BOARD_LIMIT = 0.13;
 
     public static final char FREE_SPACE_CHAR     = ' ';
     public static final char GOAL_CHAR           = '.';
@@ -83,9 +83,6 @@ public class BoardState {
     private int[]      currentReachableBoxDir;
 
     private double boardDensity;
-
-    // TODO Add method moveBoxToGoalIfPossible, needs changes in reverseMove
-
 
     private int[]                playerAndBoxesHashCells;
     private HashMap<Long, int[]> gameStateHash;
@@ -958,8 +955,8 @@ public class BoardState {
                         removeTemporaryWallsDfs(p2);
                     }
                     currentReachableBoxDir[getBoxNumber(p1)] = oppositeDir;
+                    movedBoxesCnt--;
                 }
-                movedBoxesCnt--;
             }
             previousMove = previousMove.prev;
         }
@@ -1055,6 +1052,10 @@ public class BoardState {
         }
         gameStateHash.put(hashCode, new int[]{ currentDepth, currentIteration });
         return true;
+    }
+
+    public void clearCache() {
+        gameStateHash.clear();
     }
 
     private long getHashCode(int[] array) {

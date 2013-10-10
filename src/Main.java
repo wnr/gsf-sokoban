@@ -61,14 +61,14 @@ public class Main {
         }
 
         board.setup();
-        System.out.println(board.goalDistToString(0));
 
         if (debug) { System.out.println(board); }
         String path = aggressiveSearch(board);
         if (path == null) {
             if (debug) System.out.println("Aggressive search failed, trying idA*");
-//            board.initializeBoxToGoalMapping();
+            board.clearCache();
             board.analyzeBoard(false);
+            board.initializeBoxToGoalMapping();
             path = idAStar(board);
         } else {
             if (debug) System.out.println("Aggressive search succeeded!");
@@ -127,7 +127,7 @@ public class Main {
     private static boolean dfs(BoardState board, int depth, int maxValue, boolean aggressive) {
         visitedStates++;
         if (!board.isDenseBoard()) {
-//            board.moveLatestBoxToGoalIfPossible();
+            board.moveLatestBoxToGoalIfPossible();
         }
         if (board.isBoardSolved()) {
             res = board.backtrackPath();
@@ -141,7 +141,7 @@ public class Main {
         if (printPath) {
             System.out.println(board);
             try {
-                Thread.sleep(5000);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
 
             }
