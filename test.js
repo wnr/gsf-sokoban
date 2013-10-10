@@ -648,6 +648,7 @@ Analyzer.prototype.computeData = function(results) {
       tunnels: 0,
       roomcells: 0,
       ratio: {
+        open: 0,
         boxes: 0,
         roomcells: 0,
         tunnels: 0
@@ -660,6 +661,7 @@ Analyzer.prototype.computeData = function(results) {
       tunnels: 0,
       roomcells: 0,
       ratio: {
+        open: 0,
         boxes: 0,
         roomcells: 0,
         tunnels: 0
@@ -680,7 +682,7 @@ Analyzer.prototype.computeData = function(results) {
   for (var prop in data.average) {
     if (data.average.hasOwnProperty(prop)) {
       if (typeof data.average[prop] === 'number') {
-        data.average[prop] /= this.total;
+        data.average[prop] /= results.length;
       }
     }
   }
@@ -694,10 +696,12 @@ Analyzer.prototype.computeData = function(results) {
   data.average.ratio.boxes = data.average.boxes / data.average.free;
   data.average.ratio.roomcells = data.average.roomcells / data.average.free;
   data.average.ratio.tunnels = data.average.tunnels / data.average.free;
+  data.average.ratio.open = data.average.free / (data.average.free + data.average.walls);
 
   data.median.ratio.boxes = data.median.boxes / data.median.free;
   data.median.ratio.roomcells = data.median.roomcells / data.median.free;
   data.median.ratio.tunnels = data.median.tunnels / data.median.free;
+  data.median.ratio.open = data.median.free / (data.median.free + data.median.walls);
 
   return data;
 };
@@ -871,7 +875,7 @@ function getMapInfo(map, cb) {
 
     cb(null, {
       free: parseValue(stdout, 'free'),
-      walls: parseValue(stdout, 'walls'),
+      walls: map.match(/#/g).length,
       boxes: parseValue(stdout, 'boxes'),
       trapping: parseValue(stdout, 'trapping'),
       tunnels: parseValue(stdout, 'tunnels'),
