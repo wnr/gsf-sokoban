@@ -138,7 +138,7 @@ public class BoardState {
                 freeCellCount++;
             }
         }
-        boardDensity = boxCnt / (boxCnt + freeCellCount);
+        boardDensity = ((double)boxCnt) / (boxCnt + freeCellCount);
 
         gameStateHash = new HashMap<Long, int[]>();
         playerAndBoxesHashCells = new int[boxCnt + 1];
@@ -389,7 +389,7 @@ public class BoardState {
     private void checkIfGoalsStillReachableDfs(int pos, int side, boolean[] visited) {
         int sideIndex = boxReachableSideIndex[4*pos + side];
         for (int dir = 0; dir < 4; dir++) {
-            if (boxReachableSideIndex[4*pos + dir] == sideIndex && !visited[4*pos + dir]) {
+            if (!visited[4*pos + dir] && boxReachableSideIndex[4*pos + dir] == sideIndex) {
                 visited[4*pos + dir] = true;
                 int newPos = pos + dx[getOppositeDirection(dir)];
                 if (!isWallOrTemporaryWall(newPos) && !visited[4*newPos + dir]) {
@@ -1002,7 +1002,7 @@ public class BoardState {
     public String backtrackPath() {
         StringBuilder sb = new StringBuilder();
         while (previousMove != null) {
-            previousMove.val &= (1 << 22) - 1; // TODO Only temoporary
+            previousMove.val &= (1 << 22) - 1;
             if ((previousMove.val & 8) != 0) {
                 // Move was jump
                 // Have to search for path
@@ -1059,21 +1059,21 @@ public class BoardState {
     }
 
 
-    public boolean hashCurrentBoardState(int currentDepth, int currentIteration) {
+    public boolean hashCurrentBoardState(int currentIteration) {
         long hashCode = getHashCode(playerAndBoxesHashCells);
         int[] cashedDepthInfo = gameStateHash.get(hashCode);
         if (cashedDepthInfo != null) {
-            int minDepth = cashedDepthInfo[0];
+            int minMovedBoxes= cashedDepthInfo[0];
             int prevIteration = cashedDepthInfo[1];
-            if (minDepth > currentDepth || minDepth == currentDepth && currentIteration != prevIteration) {
+            if (minMovedBoxes > movedBoxesCnt || minMovedBoxes == movedBoxesCnt && currentIteration != prevIteration) {
                 // We have been here before but with a bigger depth or in a previous iteration
-                cashedDepthInfo[0] = currentDepth;
+                cashedDepthInfo[0] = movedBoxesCnt;
                 cashedDepthInfo[1] = currentIteration;
                 return true;
             }
             return false;
         }
-        gameStateHash.put(hashCode, new int[]{ currentDepth, currentIteration });
+        gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration });
         return true;
     }
 

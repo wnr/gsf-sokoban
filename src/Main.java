@@ -101,17 +101,24 @@ public class Main {
     public static String idAStar(BoardState board) {
         long startTime = System.currentTimeMillis();
         res = null;
+        long prevVisitedStates = -1;
+        boolean moveDirectlyToGoal = !board.isDenseBoard();
         int startValue = board.getBoardValue();
         for (int maxValue = startValue; !debug || maxValue < startValue + 500; maxValue += 2) {
             long relativeTime = System.currentTimeMillis();
             visitedStates = 0;
             if (debug) { System.out.print("Trying maxValue " + maxValue + "... "); }
-            boolean done = dfs(board, 0, maxValue, false);
+            boolean done = dfs(board, 0, maxValue, false, moveDirectlyToGoal);
+            if (visitedStates == prevVisitedStates) {
+                // If we are stuck in a state we stop using moveLatestBoxToGoalIfPossible
+                moveDirectlyToGoal = false;
+            }
             if (debug) {
                 System.out.print("visited " + visitedStates + " states. ");
                 System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTime));
             }
             if (done) { return res; }
+            prevVisitedStates = visitedStates;
         }
         return null;
     }
@@ -119,14 +126,14 @@ public class Main {
     public static String aggressiveSearch(BoardState board) {
         res = null;
         int startValue = board.getBoardValue();
-        boolean done = dfs(board, 0, startValue, true);
+        boolean done = dfs(board, 0, startValue, true, false);
         if (done) { return res; }
         return null;
     }
 
-    private static boolean dfs(BoardState board, int depth, int maxValue, boolean aggressive) {
+    private static boolean dfs(BoardState board, int depth, int maxValue, boolean aggressive, boolean moveDirectlyToGoal) {
         visitedStates++;
-        if (!board.isDenseBoard()) {
+        if (moveDirectlyToGoal) {
             board.moveLatestBoxToGoalIfPossible();
         }
         if (board.isBoardSolved()) {
@@ -148,12 +155,12 @@ public class Main {
             }
         }
 
-        if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
+        if (!board.hashCurrentBoardState(maxValue)) { return false; }
         // First try and push a box from where we stand
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                 board.performMove(dir);
-                if (dfs(board, depth + 1, maxValue, aggressive)) { return true; }
+                if (dfs(board, depth + 1, maxValue, aggressive, moveDirectlyToGoal)) { return true; }
                 board.reverseMove();
             }
         }
@@ -164,7 +171,7 @@ public class Main {
             for (int dir = 0; dir < 4; dir++) {
                 if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
                     board.performMove(dir);
-                    if (dfs(board, depth + 1, maxValue, aggressive)) { return true; }
+                    if (dfs(board, depth + 1, maxValue, aggressive, moveDirectlyToGoal)) { return true; }
                     board.reverseMove();
                 }
             }
