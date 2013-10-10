@@ -1213,7 +1213,7 @@ public class BoardState {
     }
 
     public int getNumFree() {
-        return freeCellCount;
+        return freeCellCount + boxCnt;
     }
 
     public int getNumBoxes() {
