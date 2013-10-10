@@ -140,8 +140,9 @@ public class Main {
 
         if (printPath) {
             System.out.println(board);
+            System.out.println("Board value: " + board.getBoardValue());
             try {
-                Thread.sleep(5000);
+                Thread.sleep(2000);
             } catch (InterruptedException e) {
 
             }

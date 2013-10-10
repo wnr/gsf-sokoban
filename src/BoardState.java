@@ -436,6 +436,11 @@ public class BoardState {
         for (int pos = 0; pos < totalSize * 4; pos++) {
             Arrays.fill(goalSideDist[pos], INF);
         }
+
+        for(int pos = 0; pos < totalSize; pos++){
+            computeReachableSideIndexBFS(pos);
+        }
+
         for (int i = 0; i < goalCells.length; i++) {
             int goalPos = goalCells[i];
 
@@ -454,7 +459,6 @@ public class BoardState {
                         int newPos2 = newPos + dx[dir];
                         if (!isWall(newPos2)) {
 
-                            computeReachableSideIndexBFS(newPos);
 
                             int boxSideZoneIndex = boxReachableSideIndex[newPos * 4 + dir];
                             for (int boxSide = 0; boxSide < 4; boxSide++) {
@@ -513,13 +517,7 @@ public class BoardState {
                 } else if (value == INF) {
                     sb.append(' ');
                 } else {
-                    if (value > 35) {
-                        sb.append((char) (value + 61));
-                    } else if (value > 9) {
-                        sb.append((char) (value + 55));
-                    } else {
-                        sb.append(value);
-                    }
+                    sb.append(intToIntOrAscii(value));
                 }
                 if (pos % width == width - 1) {
                     sb.append('\n');
@@ -529,6 +527,35 @@ public class BoardState {
         }
         return sb.toString();
     }
+
+    private Object intToIntOrAscii(int value) {
+        Object returnValue;
+        if (value > 35) {
+            returnValue = (char) (value + 61);
+        } else if (value > 9) {
+            returnValue = (char) (value + 55);
+        } else {
+            returnValue = value;
+        }
+        return returnValue;
+    }
+
+    public String replaceBoxWithGoalValueToString(int goal){
+            StringBuilder sb = new StringBuilder();
+            for (int pos = 0; pos < totalSize; pos++) {
+                if(isBox(pos)){
+                    int value = getGoalSideDistValue(pos, goal);
+                    sb.append(intToIntOrAscii(value));
+                }else{
+                    sb.append(boardCharacters[board[pos] & 15]);
+                }
+                if (pos % width == width - 1) {
+                    sb.append('\n');
+                }
+            }
+            return sb.toString();
+        }
+    
 
     private int getGoalSideDistValue(int pos, int dir, int goal) {
         return goalSideDist[pos * 4 + dir][goal];
@@ -551,10 +578,7 @@ public class BoardState {
 
     private void computeReachableSideIndexBFS(int startPos) {
 
-        if (boxReachableSideIndex[startPos * 4] != -1) {
-            // We have already computed sides for this boxPos
-            return;
-        }
+        if(isWall(startPos)){ return;}
         int zoneIndex = 0;
         boolean[] visitedCells = new boolean[board.length];
         for (int startDir = 0; startDir < 4; startDir++) {

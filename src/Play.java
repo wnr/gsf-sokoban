@@ -50,6 +50,7 @@ public class Play {
             System.out.println("===================================================");
         }
         board.setup();
+        System.out.println(board.goalDistToString(0));
         boardInteract(board);
     }
 
@@ -127,7 +128,7 @@ public class Play {
                         b.analyzeBoard(false);
 //                        System.out.println(b);
                         System.out.println(b.isDeadLock() ? "Deadlock":"Not deadlock");
-                        System.out.println(b.temporaryWallsToString());
+                        System.out.println(b.replaceBoxWithGoalValueToString(0));
                         System.out.println("Board value: " + b.getBoardValue());
                         if (!goodMove) {
                             System.out.println("Board now unsolvable :/");
