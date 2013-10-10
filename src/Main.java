@@ -61,7 +61,7 @@ public class Main {
         }
 
         board.setup();
-        System.out.println(board.goalDistToString(0));
+//        System.out.println(board.goalDistToString(1));
 
         if (debug) { System.out.println(board); }
         String path = aggressiveSearch(board);
@@ -75,6 +75,8 @@ public class Main {
         }
         if (debug) { System.out.println("Path found: "); }
         System.out.println(path);
+
+        //TODO: Note, this checker won´ work
         if (debug) { System.out.println(investigatePath(board, path, false) ? "Path is VALID" : "Path is INVALID"); }
 
     }
@@ -129,11 +131,11 @@ public class Main {
         if (!board.isDenseBoard()) {
 //            board.moveLatestBoxToGoalIfPossible();
         }
+        board.analyzeBoard(aggressive);
         if (board.isBoardSolved()) {
             res = board.backtrackPath();
             return true;
         }
-        board.analyzeBoard(aggressive);
         int[] jumps = board.getPossibleJumpPositions();
         if (jumps == null) return false;
         if (board.getBoardValue() > maxValue) { return false; }
@@ -142,7 +144,7 @@ public class Main {
             System.out.println(board);
             System.out.println("Board value: " + board.getBoardValue());
             try {
-                Thread.sleep(2000);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
 
             }
@@ -150,11 +152,13 @@ public class Main {
 
         if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
         // First try and push a box from where we stand
-        for (int dir = 0; dir < 4; dir++) {
-            if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
-                board.performMove(dir);
-                if (dfs(board, depth + 1, maxValue, aggressive)) { return true; }
-                board.reverseMove();
+        if(!board.isFirstStep()){
+            for (int dir = 0; dir < 4; dir++) {
+                if (board.isBoxInDirection(BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
+                    board.performMove(dir, true);
+                    if (dfs(board, depth + 1, maxValue, aggressive)) { return true; }
+                    board.reverseMove();
+                }
             }
         }
 
@@ -162,8 +166,8 @@ public class Main {
         for (int jump : jumps) {
             board.performJump(jump);
             for (int dir = 0; dir < 4; dir++) {
-                if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
-                    board.performMove(dir);
+                if (board.isBoxInDirection(BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
+                    board.performMove(dir, true);
                     if (dfs(board, depth + 1, maxValue, aggressive)) { return true; }
                     board.reverseMove();
                 }
@@ -178,16 +182,16 @@ public class Main {
         for (char ch : path.toCharArray()) {
             switch (ch) {
                 case 'U':
-                    board.performMove(BoardState.UP);
+                    board.performMove(BoardState.UP, true);
                     break;
                 case 'R':
-                    board.performMove(BoardState.RIGHT);
+                    board.performMove(BoardState.RIGHT, true);
                     break;
                 case 'D':
-                    board.performMove(BoardState.DOWN);
+                    board.performMove(BoardState.DOWN, false);
                     break;
                 case 'L':
-                    board.performMove(BoardState.LEFT);
+                    board.performMove(BoardState.LEFT, false);
                     break;
                 default:
                     throw new RuntimeException("Invalid move: " + ch);

@@ -118,7 +118,7 @@ public class Play {
                     boolean goodMove = true;
                     if (move >= 0) {
                         goodMove = b.isGoodMove(move);
-                        changed = b.performMove(move);
+                        changed = b.performMove(move, false); //TODO: decide if pull box or not
                         if(changed && b.movedBoxLastMove()){
                             b.initializeBoxToGoalMapping();
                             System.out.println("Moved box number: " + b.getBoxIndexInDirection(b.directionLastMove()));
