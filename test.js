@@ -113,6 +113,13 @@ removeDir('temp', function(err) {
                   tester.printTimeouts();
                   tester.printVisual();
                   tester.printExceptions();
+
+                  var analyzer = new Analyzer(tester.exceptions, config.cores);
+                  analyzer.run(function done(err) {
+                    if (err) throw err;
+
+                    analyzer.printResults();
+                  });
                 });
               });
             }
@@ -194,7 +201,8 @@ Tester.prototype.test = function(map, level, cb) {
           test: 'Test ' + level,
           err: err.message === 'timeout' ? 'Timeout' : err.message,
           cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
-          timeout: err.message === 'timeout'
+          timeout: err.message === 'timeout',
+          map: map
         });
       }
     }
@@ -214,7 +222,8 @@ Tester.prototype.test = function(map, level, cb) {
           level: level,
           test: 'Test ' + level,
           err: 'Result: ' + result + '\nException: ' + e,
-          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main'
+          cmd: 'echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Main',
+          map: map
         });
       }
     }
@@ -269,12 +278,10 @@ Tester.prototype.printResults = function() {
     }
   }
 
-  var average = passedTime / this.passed.length;
-  var median = this.passed.map(function(e) {
+  var average = this.passed.length > 0 && passedTime / this.passed.length;
+  var median = getMedian(this.passed.map(function(e) {
     return e.time;
-  }).sort()[Math.floor(this.passed.length / 2)];
-
-  console.log(median);
+  })) || 0;
 
   console.log('');
   console.log('Total:    ' + this.bar.total);
@@ -289,9 +296,11 @@ Tester.prototype.printPassed = function() {
   var p = this.passed.sort(function(a, b) {
     if (a.level < b.level) {
       return -1;
+    } else if (a.level > b.level) {
+      return 1;
     }
 
-    return 1;
+    return 0;
   });
 
   var str = '\nPassed:';
@@ -324,9 +333,11 @@ Tester.prototype.printVisual = function() {
   visuals = visuals.sort(function(a, b) {
     if (a.level < b.level) {
       return -1;
+    } else if (a.level > b.level) {
+      return 1;
     }
 
-    return 1;
+    return 0;
   });
 
   var str = '\n';
@@ -348,9 +359,11 @@ Tester.prototype.printTimeouts = function() {
   }).sort(function(a, b) {
     if (a.level < b.level) {
       return -1;
+    } else if (a.level > b.level) {
+      return 1;
     }
 
-    return 1;
+    return 0;
   });
 
   var str = '\nTimeouts (' + this.timeout / 1000 + ' s):\n';
@@ -529,9 +542,223 @@ Walker.prototype.moveBox = function(from, to) {
   }
 };
 
+/**
+ * Analyzer
+ */
+
+function Analyzer(tests, cpus) {
+  this.tests = this.parseTests(tests);
+  this.total = this.tests.length;
+  this.results = [];
+  this.analyzed = 0;
+  this.running = 0;
+  this.cpus = cpus || 1;
+}
+
+Analyzer.prototype.parseTests = function(tests) {
+  return tests.map(function(test) {
+    var result = test;
+
+    if (!test.level) {
+      throw new Error('Level required.');
+    }
+
+    if (!test.map) {
+      throw new Error('Map required.');
+    }
+
+    if (!test.time) {
+      result.time = config.timeout;
+    }
+
+    return result;
+  });
+};
+
+Analyzer.prototype.run = function(cb) {
+  console.log('\n' + chalk.yellow(this.total + ' tests to be analyzed by ' + this.cpus + ' core' + (this.cpus === 1 ? '' : 's') + '.') + '\n');
+
+  for (var i = 0; i < this.cpus && i < this.total; i++) {
+    var t = this.tests.shift();
+    this.analyze(t, cb);
+  }
+};
+
+Analyzer.prototype.isDone = function() {
+  if (this.analyzed >= this.total) {
+    return true;
+  }
+
+  return false;
+};
+
+Analyzer.prototype.analyze = function(test, cb) {
+  this.running++;
+
+  var self = this;
+
+  getMapInfo(test.map, function(err, result) {
+    if (err || !result) {
+      throw err || new Error('no result');
+    }
+
+    self.running--;
+    self.analyzed++;
+
+    test.info = result;
+    self.results.push(test);
+
+    if (self.isDone()) {
+      cb(null);
+    } else {
+      if (self.running < self.cpus && self.analyzed + self.running < self.total) {
+        var t = self.tests.shift();
+        self.analyze(t, cb);
+      }
+    }
+  });
+};
+
+Analyzer.prototype.computeData = function() {
+  var self = this;
+
+  function calcMedian(prop) {
+    return getMedian(self.results.map(function(r) {
+      return r.info[prop];
+    }));
+  }
+
+  var data = {
+    average: {
+      free: 0,
+      walls: 0,
+      boxes: 0,
+      density: {
+        boxes: 0
+      }
+    },
+    median: {
+      free: 0,
+      walls: 0,
+      boxes: 0,
+      density: {
+        boxes: 0
+      }
+    }
+  };
+
+  this.results.forEach(function(r) {
+    var info = r.info;
+
+    for (var prop in data.average) {
+      if (data.average.hasOwnProperty(prop) && info.hasOwnProperty(prop)) {
+        data.average[prop] += info[prop];
+      }
+    }
+  });
+
+  for (var prop in data.average) {
+    if (data.average.hasOwnProperty(prop)) {
+      if (typeof data.average[prop] === 'number') {
+        data.average[prop] /= this.total;
+      }
+    }
+  }
+
+  for (prop in data.median) {
+    if (data.median.hasOwnProperty(prop) && typeof data.median[prop] === 'number') {
+      data.median[prop] = calcMedian(prop);
+    }
+  }
+
+  data.average.density.boxes += data.average.boxes / data.average.free;
+  data.median.density.boxes = data.median.boxes / data.median.free;
+
+  return data;
+};
+
+Analyzer.prototype.printResults = function() {
+  var data = this.computeData();
+
+  var prop, objprop;
+
+  for (prop in data.average) {
+    if (data.average.hasOwnProperty(prop)) {
+      if (typeof data.average[prop] === 'object') {
+        for (objprop in data.average[prop]) {
+          if (data.average[prop].hasOwnProperty(objprop)) {
+            console.log(chalk.blue('average ' + objprop + ' ' + prop + ':\t' + formatPercent(data.average[prop][objprop])));
+          }
+        }
+      } else {
+        console.log(chalk.blue('average ' + prop + ':\t\t' + data.average[prop]));
+      }
+    }
+  }
+
+  for (prop in data.median) {
+    if (data.median.hasOwnProperty(prop)) {
+      if (typeof data.median[prop] === 'object') {
+        for (objprop in data.median[prop]) {
+          if (data.median[prop].hasOwnProperty(objprop)) {
+            console.log(chalk.yellow('median ' + objprop + ' ' + prop + ':\t' + formatPercent(data.median[prop][objprop])));
+          }
+        }
+      } else {
+        console.log(chalk.yellow('median ' + prop + ':\t\t' + data.median[prop]));
+      }
+    }
+  }
+};
+
 //-----------------------------------------------------------------------------
 // Helper functions
 //-----------------------------------------------------------------------------
+
+function formatPercent(value) {
+  return (value * 100).toFixed(2) + ' %';
+}
+
+function getMedian(array) {
+  function comparer(a, b) {
+    if (a < b) {
+      return -1;
+    } else if (a > b) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  var values = array.sort(comparer);
+
+  return values.length % 2 === 1 ? values[Math.floor(values.length / 2)] : (values[Math.floor(values.length / 2)] + values[Math.ceil(values.length / 2)]) / 2;
+}
+
+function getMapInfo(map, cb) {
+  function parseValue(string, value) {
+    var regex = new RegExp(value + ':\\s\\d+');
+    return parseInt(string.match(regex)[0].replace(/[^\d]/g, ''), 10);
+  }
+
+  execute('echo "' + map.replace(/\$/g, '\\$') + '" | java -cp temp/out.sokoban Info', function(err, stdout, stderr) {
+    if (err || stderr || !stdout) {
+      cb(err || new Error(stderr));
+      return;
+    }
+
+    cb(null, {
+      free: parseValue(stdout, 'free'),
+      walls: parseValue(stdout, 'walls'),
+      boxes: parseValue(stdout, 'boxes'),
+      trapping: parseValue(stdout, 'trapping'),
+      tunnels: parseValue(stdout, 'tunnels'),
+      deadends: parseValue(stdout, 'deadends'),
+      roomcells: parseValue(stdout, 'roomcells'),
+      openings: parseValue(stdout, 'openings')
+    });
+  });
+}
 
 function readTestData(file, limit, cb) {
   if (typeof limit === 'function') {
@@ -608,7 +835,7 @@ function createDir(dir, cb) {
 
 function compile(cb) {
   var src = path.normalize('src/');
-  execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardUtil.java -d temp/out.sokoban -encoding UTF-8', cb);
+  execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardUtil.java ' + src + 'Info.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
 function test(map, timeout, cb) {

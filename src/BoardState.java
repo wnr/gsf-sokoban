@@ -64,6 +64,7 @@ public class BoardState {
     private int width, height, totalSize;
     private int playerPos;
     public  int goalCnt, boxCnt;
+    private int freeCellCount;
 
     private StackEntry previousMove;
     private int[]      board;
@@ -133,7 +134,7 @@ public class BoardState {
             }
         }
 
-        double freeCellCount = 0;
+        freeCellCount = 0;
         // Calculate board density
         for (int pos = 0; pos < totalSize; pos++) {
             if (isFree(pos)) {
@@ -555,7 +556,7 @@ public class BoardState {
             }
             return sb.toString();
         }
-    
+
 
     private int getGoalSideDistValue(int pos, int dir, int goal) {
         return goalSideDist[pos * 4 + dir][goal];
@@ -1209,5 +1210,65 @@ public class BoardState {
 
     public int getBoxNumber(int pos) {
         return board[pos] >>> 4;
+    }
+
+    public int getNumFree() {
+        return freeCellCount;
+    }
+
+    public int getNumBoxes() {
+        return boxCnt;
+    }
+
+    public int getNumTrappingCells() {
+        int count = 0;
+
+        for (int pos = 0; pos < totalSize; pos++) {
+            if(trappingCells[pos]) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private int getTunnelCount(int type) {
+        int count = 0;
+
+        for (int pos = width; pos < totalSize - width; pos++) {
+            if((tunnels[pos] & type) == type) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    public int getNumTunnels() {
+        return getTunnelCount(TUNNEL);
+    }
+
+    public int getNumDeadEnds() {
+        return getTunnelCount(DEAD_END);
+    }
+
+    public int getNumRoomsCells() {
+        return getTunnelCount(ROOM);
+    }
+
+    public int getNumOpenings() {
+        return getTunnelCount(OPENING);
+    }
+
+    public int getNumWalls() {
+        int count = 0;
+
+        for (int pos = 0; pos < totalSize; pos++) {
+            if(isWall(pos)) {
+                count++;
+            }
+        }
+
+        return count;
     }
 }
