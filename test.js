@@ -633,16 +633,24 @@ Analyzer.prototype.computeData = function() {
       free: 0,
       walls: 0,
       boxes: 0,
+      tunnels: 0,
+      roomcells: 0,
       density: {
-        boxes: 0
+        boxes: 0,
+        roomcells: 0,
+        tunnels: 0
       }
     },
     median: {
       free: 0,
       walls: 0,
       boxes: 0,
+      tunnels: 0,
+      roomcells: 0,
       density: {
-        boxes: 0
+        boxes: 0,
+        roomcells: 0,
+        tunnels: 0
       }
     }
   };
@@ -671,15 +679,27 @@ Analyzer.prototype.computeData = function() {
     }
   }
 
-  data.average.density.boxes += data.average.boxes / data.average.free;
+  data.average.density.boxes = data.average.boxes / data.average.free;
+  data.average.density.roomcells = data.average.roomcells / data.average.free;
+  data.average.density.tunnels = data.average.tunnels / data.average.free;
+
   data.median.density.boxes = data.median.boxes / data.median.free;
+  data.median.density.roomcells = data.median.roomcells / data.median.free;
+  data.median.density.tunnels = data.median.tunnels / data.median.free;
 
   return data;
 };
 
 Analyzer.prototype.printResults = function() {
-  var data = this.computeData();
+  function print(text, value, color) {
+    var width = 30;
 
+    var space = new Array(width - text.length).join(' ');
+
+    console.log(color(text + space + value));
+  }
+
+  var data = this.computeData();
   var prop, objprop;
 
   for (prop in data.average) {
@@ -687,11 +707,11 @@ Analyzer.prototype.printResults = function() {
       if (typeof data.average[prop] === 'object') {
         for (objprop in data.average[prop]) {
           if (data.average[prop].hasOwnProperty(objprop)) {
-            console.log(chalk.blue('average ' + objprop + ' ' + prop + ':\t' + formatPercent(data.average[prop][objprop])));
+            print('average ' + objprop + ' ' + prop + ':', formatPercent(data.average[prop][objprop]), chalk.blue);
           }
         }
       } else {
-        console.log(chalk.blue('average ' + prop + ':\t\t' + data.average[prop]));
+        print('average ' + prop + ':', formatCount(data.average[prop]), chalk.blue);
       }
     }
   }
@@ -701,11 +721,11 @@ Analyzer.prototype.printResults = function() {
       if (typeof data.median[prop] === 'object') {
         for (objprop in data.median[prop]) {
           if (data.median[prop].hasOwnProperty(objprop)) {
-            console.log(chalk.yellow('median ' + objprop + ' ' + prop + ':\t' + formatPercent(data.median[prop][objprop])));
+            print('median ' + objprop + ' ' + prop + ':', formatPercent(data.median[prop][objprop]), chalk.yellow);
           }
         }
       } else {
-        console.log(chalk.yellow('median ' + prop + ':\t\t' + data.median[prop]));
+        print('median ' + prop + ':', formatCount(data.median[prop]), chalk.yellow);
       }
     }
   }
@@ -716,7 +736,11 @@ Analyzer.prototype.printResults = function() {
 //-----------------------------------------------------------------------------
 
 function formatPercent(value) {
-  return (value * 100).toFixed(2) + ' %';
+  return (value * 100).toFixed(1) + ' %';
+}
+
+function formatCount(value) {
+  return value.toFixed(1);
 }
 
 function getMedian(array) {
