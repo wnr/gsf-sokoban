@@ -61,7 +61,7 @@ public class Main {
         }
 
         board.setup();
-        System.out.println(board.goalDistToString(0));
+        //System.out.println(board.goalDistToString(0));
 
         if (debug) { System.out.println(board); }
         String path = aggressiveSearch(board);
