@@ -60,6 +60,12 @@ if (process.argv[4] !== undefined) {
   config.cores = parseInt(process.argv[4], 10);
 }
 
+if (process.argv[5] !== undefined) {
+  config.tests = config.timeout / 1000;
+  config.timeout = config.cores * 1000;
+  config.cores = parseInt(process.argv[5], 10);
+}
+
 printHeader('Google Search First Sokoban Test');
 
 removeDir('temp', function(err) {
@@ -114,7 +120,7 @@ removeDir('temp', function(err) {
                   tester.printVisual();
                   tester.printExceptions();
 
-                  var analyzer = new Analyzer(tester.exceptions, config.cores);
+                  var analyzer = new Analyzer(tester.exceptions.concat(tester.passed), config.cores);
                   analyzer.run(function done(err) {
                     if (err) throw err;
 
@@ -212,7 +218,11 @@ Tester.prototype.test = function(map, level, cb) {
 
       try {
         if (walker.goByString(result.replace(/\n|\r/g, '')).isSolved()) {
-          self.passed.push(new self.TestResult(level, time));
+          self.passed.push({
+            level: level,
+            time: time,
+            map: map
+          });
         } else {
           self.failed++;
         }
@@ -619,13 +629,15 @@ Analyzer.prototype.analyze = function(test, cb) {
   });
 };
 
-Analyzer.prototype.computeData = function() {
-  var self = this;
-
+Analyzer.prototype.computeData = function(results) {
   function calcMedian(prop) {
-    return getMedian(self.results.map(function(r) {
+    return getMedian(results.map(function(r) {
       return r.info[prop];
     }));
+  }
+
+  if (!results || results.length === 0) {
+    return null;
   }
 
   var data = {
@@ -635,7 +647,7 @@ Analyzer.prototype.computeData = function() {
       boxes: 0,
       tunnels: 0,
       roomcells: 0,
-      density: {
+      ratio: {
         boxes: 0,
         roomcells: 0,
         tunnels: 0
@@ -647,7 +659,7 @@ Analyzer.prototype.computeData = function() {
       boxes: 0,
       tunnels: 0,
       roomcells: 0,
-      density: {
+      ratio: {
         boxes: 0,
         roomcells: 0,
         tunnels: 0
@@ -655,7 +667,7 @@ Analyzer.prototype.computeData = function() {
     }
   };
 
-  this.results.forEach(function(r) {
+  results.forEach(function(r) {
     var info = r.info;
 
     for (var prop in data.average) {
@@ -679,56 +691,142 @@ Analyzer.prototype.computeData = function() {
     }
   }
 
-  data.average.density.boxes = data.average.boxes / data.average.free;
-  data.average.density.roomcells = data.average.roomcells / data.average.free;
-  data.average.density.tunnels = data.average.tunnels / data.average.free;
+  data.average.ratio.boxes = data.average.boxes / data.average.free;
+  data.average.ratio.roomcells = data.average.roomcells / data.average.free;
+  data.average.ratio.tunnels = data.average.tunnels / data.average.free;
 
-  data.median.density.boxes = data.median.boxes / data.median.free;
-  data.median.density.roomcells = data.median.roomcells / data.median.free;
-  data.median.density.tunnels = data.median.tunnels / data.median.free;
+  data.median.ratio.boxes = data.median.boxes / data.median.free;
+  data.median.ratio.roomcells = data.median.roomcells / data.median.free;
+  data.median.ratio.tunnels = data.median.tunnels / data.median.free;
 
   return data;
 };
 
+Analyzer.prototype.isPassed = function(test) {
+  if (typeof test.err === 'undefined') {
+    return true;
+  }
+
+  return false;
+};
+
+Analyzer.prototype.isTimeout = function(test) {
+  return !this.isPassed(test) && test.timeout;
+};
+
+Analyzer.prototype.isFasterThan = function(test, time) {
+  return this.isPassed(test) && test.time < time * 1000;
+};
+
 Analyzer.prototype.printResults = function() {
-  function print(text, value, color) {
-    var width = 30;
+  var meassures = [];
 
-    var space = new Array(width - text.length).join(' ');
+  meassures.push({
+    title: 'timeouts',
+    data: this.computeData(this.results.filter(function(test) {
+      return this.isTimeout(test);
+    }, this))
+  });
 
-    console.log(color(text + space + value));
+  meassures.push({
+    title: 'fast < 1 s',
+    data: this.computeData(this.results.filter(function(test) {
+      return this.isFasterThan(test, 1);
+    }, this))
+  });
+
+  meassures = meassures.filter(function(m) {
+    if (m.data) {
+      return m;
+    }
+  });
+
+  this.printMeasurementMatrix(meassures);
+};
+
+Analyzer.prototype.printMeasurementMatrix = function(meassures) {
+  function printDesc(desc) {
+    process.stdout.write(desc + new Array(descWidth - desc.length).join(' '));
   }
 
-  var data = this.computeData();
-  var prop, objprop;
+  function isHighest(value, type, prop, objprop) {
+    var highest = value;
 
-  for (prop in data.average) {
-    if (data.average.hasOwnProperty(prop)) {
-      if (typeof data.average[prop] === 'object') {
-        for (objprop in data.average[prop]) {
-          if (data.average[prop].hasOwnProperty(objprop)) {
-            print('average ' + objprop + ' ' + prop + ':', formatPercent(data.average[prop][objprop]), chalk.blue);
-          }
+    for (var i = 0; i < meassures.length; i++) {
+      if (objprop) {
+        if (meassures[i].data[type][prop][objprop] > highest) {
+          return false;
         }
       } else {
-        print('average ' + prop + ':', formatCount(data.average[prop]), chalk.blue);
+        if (meassures[i].data[type][prop] > highest) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  function printProp(type, prop, objprop) {
+    meassures.forEach(function(m) {
+      var string;
+      var highest = (objprop && isHighest(m.data[type][prop][objprop], type, prop, objprop)) || (!objprop && isHighest(m.data[type][prop], type, prop));
+
+      if (prop === 'ratio') {
+        string = formatPercent(m.data[type][prop][objprop]);
+      } else {
+        string = formatCount(m.data[type][prop]);
+      }
+
+      if (highest) {
+        string += new Array(8 - string.length).join(' ');
+      }
+
+      if (highest) {
+        process.stdout.write(chalk.bgRed(string) + new Array(dataWidth - string.length).join(' '));
+      } else {
+        process.stdout.write(string + new Array(dataWidth - string.length).join(' '));
+      }
+    });
+
+    process.stdout.write('\n');
+  }
+
+  function printByType(type) {
+    for (var prop in base[type]) {
+      if (base[type].hasOwnProperty(prop)) {
+        if (typeof base[type][prop] === 'object') {
+          for (var objprop in base[type][prop]) {
+            if (base[type][prop].hasOwnProperty(objprop)) {
+              printDesc(type + ' ' + prop + ' ' + objprop + ':');
+              printProp(type, prop, objprop);
+            }
+          }
+        } else {
+          printDesc(type + ' ' + prop + ':');
+          printProp(type, prop);
+        }
       }
     }
   }
 
-  for (prop in data.median) {
-    if (data.median.hasOwnProperty(prop)) {
-      if (typeof data.median[prop] === 'object') {
-        for (objprop in data.median[prop]) {
-          if (data.median[prop].hasOwnProperty(objprop)) {
-            print('median ' + objprop + ' ' + prop + ':', formatPercent(data.median[prop][objprop]), chalk.yellow);
-          }
-        }
-      } else {
-        print('median ' + prop + ':', formatCount(data.median[prop]), chalk.yellow);
-      }
-    }
+  var descWidth = 30;
+  var dataWidth = 20;
+
+  if (!meassures || meassures.length === 0) {
+    return;
   }
+
+  process.stdout.write(new Array(descWidth).join(' '))
+  meassures.forEach(function(m) {
+    process.stdout.write(m.title + new Array(dataWidth - m.title.length).join(' '));
+  });
+  process.stdout.write('\n');
+
+  var base = meassures[0].data;
+
+  printByType('average');
+  printByType('median');
 };
 
 //-----------------------------------------------------------------------------
