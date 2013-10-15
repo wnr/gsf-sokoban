@@ -88,6 +88,11 @@ public class BoardState {
     private int[]                playerAndBoxesHashCells;
     private HashMap<Long, int[]> gameStateHash;
 
+    private BoardStateBackwards boardStateBackwards;
+
+
+    private String pathWithBackwards;
+
     int mostUpLeftPos;
 
     public BoardState(List<String> lines) {
@@ -138,7 +143,7 @@ public class BoardState {
                 freeCellCount++;
             }
         }
-        boardDensity = ((double)boxCnt) / (boxCnt + freeCellCount);
+        boardDensity = ((double) boxCnt) / (boxCnt + freeCellCount);
 
         gameStateHash = new HashMap<Long, int[]>();
         playerAndBoxesHashCells = new int[boxCnt + 1];
@@ -172,19 +177,19 @@ public class BoardState {
             lastMovedBoxIndex = getBoxNumber(lastMovedBoxPos);
 
             // Deadlock check needs to be more effective to be worth it right now
-//            boolean checkDeadlock = false;
-//            if (!isGoal(lastMovedBoxPos)) {
-//                for (int d = 0; d < 4; d++) {
-//                    int adjacentBoxPos = lastMovedBoxPos + dx[d];
-//                    if (isFree(adjacentBoxPos) && trappingCells[adjacentBoxPos]) {
-//                        checkDeadlock = true;
-//                    }
-//                }
-//            }
-//            if (checkDeadlock && isDeadLock()) {
-//                possibleJumpPositions = null;
-//                return;
-//            }
+            //            boolean checkDeadlock = false;
+            //            if (!isGoal(lastMovedBoxPos)) {
+            //                for (int d = 0; d < 4; d++) {
+            //                    int adjacentBoxPos = lastMovedBoxPos + dx[d];
+            //                    if (isFree(adjacentBoxPos) && trappingCells[adjacentBoxPos]) {
+            //                        checkDeadlock = true;
+            //                    }
+            //                }
+            //            }
+            //            if (checkDeadlock && isDeadLock()) {
+            //                possibleJumpPositions = null;
+            //                return;
+            //            }
 
             addTemporaryWallsDfs(lastMovedBoxPos);
             updateMatchingForBox(lastMovedBoxIndex);
@@ -1062,6 +1067,16 @@ public class BoardState {
 
     public boolean hashCurrentBoardState(int currentIteration) {
         long hashCode = getHashCode(playerAndBoxesHashCells);
+
+        if(boardStateBackwards != null){
+            HashMap<Long, int[]> boardStateBackwardsHash = boardStateBackwards.getGameStateHash();
+            int[] backwardsHashKey = boardStateBackwardsHash.get(hashCode);
+            if(backwardsHashKey != null){
+                //We found our way home!
+
+            }
+        }
+
         int[] cashedDepthInfo = gameStateHash.get(hashCode);
         if (cashedDepthInfo != null) {
             int minMovedBoxes= cashedDepthInfo[0];
@@ -1074,7 +1089,11 @@ public class BoardState {
             }
             return false;
         }
-        gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration });
+        int savedPreviousMove = -1;
+        if(previousMove != null){
+            savedPreviousMove = previousMove.val;
+        }
+        gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove});
         return true;
     }
 
@@ -1271,4 +1290,17 @@ public class BoardState {
 
         return count;
     }
+
+    public HashMap<Long, int[]> getGameStateHash() {
+        return gameStateHash;
+    }
+
+    public void setBoardStateBackwards(BoardStateBackwards boardStateBackwards) {
+        this.boardStateBackwards = boardStateBackwards;
+    }
+
+    public String getPathWithBackwards() {
+        return pathWithBackwards;
+    }
+
 }

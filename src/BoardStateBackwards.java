@@ -93,6 +93,10 @@ public class BoardStateBackwards {
 
     private int[]                playerAndBoxesHashCells;
     private HashMap<Long, int[]> gameStateHash;
+    private BoardState           boardStateForwards;
+
+    private String pathWithForwards;
+
 
     int mostUpLeftPos;
 
@@ -1153,7 +1157,11 @@ public class BoardStateBackwards {
             }
             return false;
         }
-        gameStateHash.put(hashCode, new int[]{ currentDepth, currentIteration });
+        int savedPreviousMove = -1;
+        if(previousMove != null){
+            savedPreviousMove = previousMove.val;
+        }
+        gameStateHash.put(hashCode, new int[]{ currentDepth, currentIteration, savedPreviousMove });
         return true;
     }
 
@@ -1289,5 +1297,17 @@ public class BoardStateBackwards {
 
     public int getBoxNumber(int pos) {
         return board[pos] >>> 4;
+    }
+
+    public HashMap<Long, int[]> getGameStateHash() {
+        return gameStateHash;
+    }
+
+    public void setBoardStateForwards(BoardState boardStateForwards) {
+        this.boardStateForwards = boardStateForwards;
+    }
+
+    public String getPathWithForwards() {
+        return pathWithForwards;
     }
 }

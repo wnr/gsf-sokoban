@@ -6,7 +6,7 @@ public class Main {
 
     public static final int FORWARD  = 0;
     public static final int BACKWARD = 1;
-    public static final int BOTH     = 1;
+    public static final int BI_DIR   = 2;
 
     public static boolean debug              = false;
     public static boolean printPath          = false;
@@ -86,6 +86,7 @@ public class Main {
         String path = null;
 
         if (forwardOrBackwards == FORWARD) {
+            if (debug) {System.out.println("Using only Forward algorithms");}
             path = aggressiveSearch(boardForward);
 
             if (path == null) {
@@ -98,6 +99,8 @@ public class Main {
                 if (debug) { System.out.println("Aggressive search succeeded!"); }
             }
         } else if (forwardOrBackwards == BACKWARD) {
+            if (debug) {System.out.println("Using only Backward algorithms");}
+
             path = aggressiveSearchBackwards(boardBackward);
 
             if (path == null) {
@@ -109,9 +112,21 @@ public class Main {
             } else {
                 if (debug) { System.out.println("Aggressive search succeeded!"); }
             }
-        } else if (forwardOrBackwards == BOTH) {
+        } else if (forwardOrBackwards == BI_DIR) {
+            boardBackward.setBoardStateForwards(boardForward);
+            boardForward.setBoardStateBackwards(boardBackward);
+            if (debug) {System.out.println("Using Forward AND Backwards algorithms");}
+            path = aggressiveSearch(boardForward);
+            if (path == null) {
+                if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
+                boardForward.clearCache();
+                boardForward.analyzeBoard(false);
+                boardForward.initializeBoxToGoalMapping();
 
-
+                path = idAStar(boardForward);
+            } else {
+                if (debug) { System.out.println("Aggressive search succeeded!"); }
+            }
         }
 
         if (debug) { System.out.println("Path found: "); }
@@ -167,6 +182,39 @@ public class Main {
         return null;
     }
 
+    public static String idAStarBi(BoardState boardForwards, BoardStateBackwards boardBackwards) {
+        long startTime = System.currentTimeMillis();
+        res = null;
+        int startValueForwards = boardForwards.getBoardValue();
+        int startValueBackwards = boardBackwards.getBoardValue();
+        for (int depthValueIncreaser = 0; !debug || depthValueIncreaser < 500; depthValueIncreaser += 2) {
+            int maxValueForwards = startValueForwards + depthValueIncreaser;
+            long relativeTimeForwards = System.currentTimeMillis();
+            visitedStates = 0;
+            if (debug) { System.out.print("Trying maxValue using Forwards " + maxValueForwards + "... "); }
+            boolean done = dfs(boardForwards, 0, maxValueForwards, false, false);
+
+            if (debug) {
+                System.out.print("visited " + visitedStates + " states. ");
+                System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTimeForwards));
+            }
+            if (done) { return res; }
+
+            int maxValueBackwards = startValueBackwards + depthValueIncreaser;
+            long relativeTimeBackwards = System.currentTimeMillis();
+            visitedStates = 0;
+            if (debug) { System.out.print("Trying maxValue using Backwards " + maxValueBackwards + "... "); }
+            done = dfsBackwards(boardBackwards, 0, maxValueBackwards, false);
+            if (debug) {
+                System.out.print("visited " + visitedStates + " states. ");
+                System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTimeBackwards));
+            }
+            if (done) { return res; }
+        }
+        return null;
+    }
+
+
     public static String aggressiveSearch(BoardState board) {
         res = null;
         int startValue = board.getBoardValue();
@@ -200,7 +248,12 @@ public class Main {
             }
         }
 
-        if (!board.hashCurrentBoardState(maxValue)) { return false; }
+        if (!board.hashCurrentBoardState(maxValue)) {return false;}
+
+        if (board.getPathWithBackwards() != null) {
+            res = board.getPathWithBackwards();
+            return true;
+        }
         // First try and push a box from where we stand
         for (int dir = 0; dir < 4; dir++) {
             if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
@@ -278,6 +331,10 @@ public class Main {
         }
 
         if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
+        if (board.getPathWithForwards() != null) {
+            res = board.getPathWithForwards();
+            return true;
+        }
         // First try and push a box from where we stand
         if (!board.isFirstStep()) {
             for (int dir = 0; dir < 4; dir++) {
