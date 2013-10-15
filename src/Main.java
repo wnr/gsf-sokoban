@@ -24,6 +24,7 @@ public class Main {
             }
         }
 
+        long startime = System.currentTimeMillis();
 
         if (args.length == 0) {
             ArrayList<String> lines = new ArrayList<String>();
@@ -59,9 +60,15 @@ public class Main {
             System.exit(0);
 
         }
+        if(debug){
+            System.out.print("Time before setup: " + (System.currentTimeMillis()-startime));
+        }
 
         board.setup();
-//        System.out.println(board.goalDistToString(1));
+        if(debug){
+            System.out.println("Time after setup:" + (System.currentTimeMillis() -startime));
+        }
+//        System.out.println(board.goalDistToString(5));
 
         if (debug) { System.out.println(board); }
         String path = aggressiveSearch(board);
