@@ -66,7 +66,7 @@ if (process.argv[5] !== undefined) {
   config.cores = parseInt(process.argv[5], 10);
 }
 
-printHeader('Google Search First Sokoban Test');
+printHeader('Google First Search Sokoban Test');
 
 removeDir('temp', function(err) {
   if (err) {
