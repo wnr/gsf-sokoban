@@ -102,6 +102,7 @@ public class Main {
         long startTime = System.currentTimeMillis();
         res = null;
         long prevVisitedStates = -1;
+        long prevVisitedIncrease = -1;
         boolean moveDirectlyToGoal = !board.isDenseBoard();
         int startValue = board.getBoardValue();
         for (int maxValue = startValue; !debug || maxValue < startValue + 500; maxValue += 2) {
@@ -109,7 +110,9 @@ public class Main {
             visitedStates = 0;
             if (debug) { System.out.print("Trying maxValue " + maxValue + "... "); }
             boolean done = dfs(board, 0, maxValue, false, moveDirectlyToGoal);
-            if (visitedStates == prevVisitedStates) {
+
+            long visitedIncrease = visitedStates - prevVisitedStates;
+            if (visitedIncrease <= prevVisitedIncrease) {
                 // If we are stuck in a state we stop using moveLatestBoxToGoalIfPossible
                 moveDirectlyToGoal = false;
             }
@@ -119,6 +122,7 @@ public class Main {
             }
             if (done) { return res; }
             prevVisitedStates = visitedStates;
+            prevVisitedIncrease = visitedIncrease;
         }
         return null;
     }

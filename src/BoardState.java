@@ -171,19 +171,20 @@ public class BoardState {
             lastMovedBoxPos = playerPos + dx[dir];
             lastMovedBoxIndex = getBoxNumber(lastMovedBoxPos);
 
-            boolean checkDeadlock = false;
-            if (!isGoal(lastMovedBoxPos)) {
-                for (int d = 0; d < 4; d++) {
-                    int adjacentBoxPos = lastMovedBoxPos + dx[d];
-                    if (isFree(adjacentBoxPos) && trappingCells[adjacentBoxPos]) {
-                        checkDeadlock = true;
-                    }
-                }
-            }
-            if (checkDeadlock && isDeadLock()) {
-                possibleJumpPositions = null;
-                return;
-            }
+            // Deadlock check needs to be more effective to be worth it right now
+//            boolean checkDeadlock = false;
+//            if (!isGoal(lastMovedBoxPos)) {
+//                for (int d = 0; d < 4; d++) {
+//                    int adjacentBoxPos = lastMovedBoxPos + dx[d];
+//                    if (isFree(adjacentBoxPos) && trappingCells[adjacentBoxPos]) {
+//                        checkDeadlock = true;
+//                    }
+//                }
+//            }
+//            if (checkDeadlock && isDeadLock()) {
+//                possibleJumpPositions = null;
+//                return;
+//            }
 
             addTemporaryWallsDfs(lastMovedBoxPos);
             updateMatchingForBox(lastMovedBoxIndex);
