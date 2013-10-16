@@ -908,7 +908,7 @@ public class BoardState {
 
     /*
      * Teleports the player to the given position. No error checking done!
-     * Should only use positions given by getPossibleJumpPositions()
+     * Should only use positions given by getPossibleBoxJumpMoves()
      */
     public boolean performJump(int pos) {
         previousMove = new StackEntry(8 | playerPos << 4, previousMove);
@@ -1119,7 +1119,7 @@ public class BoardState {
     private long getHashCode(int[] array) {
         long hash = 0;
         for (int i = 0; i < array.length; i++) {
-            hash = hash * 31 + array[i];
+            hash = hash * 47 + array[i];
         }
         return hash;
     }

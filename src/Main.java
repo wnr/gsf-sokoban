@@ -10,7 +10,7 @@ public class Main {
 
     public static boolean debug              = false;
     public static boolean printPath          = false;
-    public static int     forwardOrBackwards = FORWARD;
+    public static int     forwardOrBackwards = BACKWARD;
 
 
     public static void main(String[] args) throws IOException {
@@ -101,13 +101,13 @@ public class Main {
         } else if (forwardOrBackwards == BACKWARD) {
             if (debug) {System.out.println("Using only Backward algorithms");}
 
-            path = aggressiveSearchBackwards(boardBackward);
+//            path = aggressiveSearchBackwards(boardBackward);
 
             if (path == null) {
                 if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
                 //                boardBackward.clearCache();
                 boardBackward.analyzeBoard(false);
-                boardBackward.initializeBoxToGoalMapping();
+//                boardBackward.initializeBoxToGoalMapping();
                 path = idAStarBackwards(boardBackward);
             } else {
                 if (debug) { System.out.println("Aggressive search succeeded!"); }
@@ -235,8 +235,12 @@ public class Main {
         board.analyzeBoard(aggressive);
         int[] jumps = board.getPossibleJumpPositions();
         if (jumps == null) { return false; }
-        if (board.getBoardValue() > maxValue) { return false; }
 
+        if (board.getBoardValue() > maxValue) { return false; }
+//        if(board.getBoardValue() != maxValue){
+//            System.out.println(board);
+//            System.out.println(board.getBoardValue() + " " + maxValue);
+//        }
         if (printPath) {
             System.out.println(board);
             System.out.println("Board value: " + board.getBoardValue());
@@ -315,8 +319,8 @@ public class Main {
             res = board.backtrackPath();
             return true;
         }
-        int[] jumps = board.getPossibleJumpPositions();
-        if (jumps == null) { return false; }
+        int[] possibleBoxMoves = board.getPossibleBoxJumpMoves();
+        if (possibleBoxMoves == null) { return false; }
         if (board.getBoardValue() > maxValue) { return false; }
 
         if (printPath) {
@@ -339,7 +343,8 @@ public class Main {
         if (!board.isFirstStep()) {
             for (int dir = 0; dir < 4; dir++) {
                 if (board.isBoxInDirection(BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
-                    board.performMove(dir, true);
+                    int boxPos = board.getPosFromPlayerInDirection(BoardState.getOppositeDirection(dir));
+                    board.performBoxMove(dir | boxPos << 2);
                     if (dfsBackwards(board, depth + 1, maxValue, aggressive)) { return true; }
                     board.reverseMove();
                 }
@@ -347,15 +352,9 @@ public class Main {
         }
 
         // Now try moving first and then push
-        for (int jump : jumps) {
-            board.performJump(jump);
-            for (int dir = 0; dir < 4; dir++) {
-                if (board.isBoxInDirection(BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
-                    board.performMove(dir, true);
-                    if (dfsBackwards(board, depth + 1, maxValue, aggressive)) { return true; }
-                    board.reverseMove();
-                }
-            }
+        for (int boxMove : possibleBoxMoves) {
+            board.performBoxMove(boxMove);
+            if (dfsBackwards(board, depth + 1, maxValue, aggressive)) { return true; }
             board.reverseMove();
         }
         return false;
