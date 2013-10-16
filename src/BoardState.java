@@ -11,6 +11,8 @@ public class BoardState {
     public static final int    INF               = 100000000;
     public static final double DENSE_BOARD_LIMIT = 0.13;
 
+    public static long HASH_MULTIPLIER           = 47;
+
     public static final char FREE_SPACE_CHAR     = ' ';
     public static final char GOAL_CHAR           = '.';
     public static final char WALL_CHAR           = '#';
@@ -1119,10 +1121,39 @@ public class BoardState {
         gameStateHash.clear();
     }
 
-    private long getHashCode(int[] array) {
+    public static long getHashForBoard(int[] board, int[] dx) {
+        long res = 0;
+        int playerPos = -1;
+        for (int i = 0; i < board.length; i++) {
+            if ((board[i] & BOX) != 0) {
+                res = res * HASH_MULTIPLIER + i;
+            }
+            if ((board[i] & PLAYER) != 0) {
+                playerPos = i;
+            }
+        }
+        boolean[] visited = new boolean[board.length];
+        int mostUpLeftPos = getHashForBoardDfs(playerPos, board, dx, visited);
+        res = res * HASH_MULTIPLIER + mostUpLeftPos + board.length;
+        return res;
+    }
+
+    private static int getHashForBoardDfs(int pos, int[] board, int[] dx, boolean[] visited) {
+        visited[pos] = true;
+        int res = pos;
+        for (int dir = 0; dir < 4; dir++) {
+            int newPos = pos + dx[dir];
+            if (isFree(board, newPos) && !visited[newPos]) {
+                res = Math.min(res, getHashForBoardDfs(newPos, board, dx, visited));
+            }
+        }
+        return res;
+    }
+
+    private static long getHashCode(int[] array) {
         long hash = 0;
         for (int i = 0; i < array.length; i++) {
-            hash = hash * 47 + array[i];
+            hash = hash * HASH_MULTIPLIER + array[i];
         }
         return hash;
     }

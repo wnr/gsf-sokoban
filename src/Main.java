@@ -10,7 +10,7 @@ public class Main {
 
     public static boolean debug              = false;
     public static boolean printPath          = false;
-    public static int     forwardOrBackwards = BACKWARD;
+    public static int     forwardOrBackwards = FORWARD;
 
 
     public static void main(String[] args) throws IOException {
