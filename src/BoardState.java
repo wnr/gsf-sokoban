@@ -95,6 +95,7 @@ public class BoardState {
 
     int mostUpLeftPos;
 
+
     public BoardState(List<String> lines) {
         height = lines.size();
         width = 0;
@@ -1010,39 +1011,44 @@ public class BoardState {
         while (previousMove != null) {
             previousMove.val &= (1 << 22) - 1;
             if ((previousMove.val & 8) != 0) {
+                int startPos = previousMove.val >>> 4;
+                backtrackPathJumpBFS(board, startPos, playerPos, sb);
                 // Move was jump
                 // Have to search for path
-                int startPos = previousMove.val >>> 4;
-                int[] prev = new int[totalSize];
-                Arrays.fill(prev, -2);
-                LinkedList<Integer> q = new LinkedList<Integer>();
-                q.add(startPos);
-                prev[startPos] = -1;
-                while (!q.isEmpty()) {
-                    int pos = q.removeFirst();
-                    if (pos == playerPos) {
-                        int tempPos = playerPos;
-                        while (prev[tempPos] != -1) {
-                            int dir = prev[tempPos];
-                            sb.append(directionCharacters[dir]);
-                            tempPos += dx[getOppositeDirection(dir)];
-                        }
-                        break;
-                    }
-                    for (int dir = 0; dir < 4; dir++) {
-                        int newPos = pos + dx[dir];
-                        if (isFree(newPos) && prev[newPos] == -2) {
-                            prev[newPos] = dir;
-                            q.add(newPos);
-                        }
-                    }
-                }
+
             } else {
                 sb.append(directionCharacters[previousMove.val & 3]);
             }
             reverseMove();
         }
         return sb.reverse().toString();
+    }
+
+    private  void backtrackPathJumpBFS(int[] board, int startPos, int endPos, StringBuilder sb){
+        int[] prev = new int[board.length];
+        Arrays.fill(prev, -2);
+        LinkedList<Integer> q = new LinkedList<Integer>();
+        q.add(startPos);
+        prev[startPos] = -1;
+        while (!q.isEmpty()) {
+            int pos = q.removeFirst();
+            if (pos == endPos) {
+                int tempPos = endPos;
+                while (prev[tempPos] != -1) {
+                    int dir = prev[tempPos];
+                    sb.append(directionCharacters[dir]);
+                    tempPos += dx[getOppositeDirection(dir)];
+                }
+                break;
+            }
+            for (int dir = 0; dir < 4; dir++) {
+                int newPos = pos + dx[dir];
+                if (isFree(board, newPos) && prev[newPos] == -2) {
+                    prev[newPos] = dir;
+                    q.add(newPos);
+                }
+            }
+        }
     }
 
     /*
@@ -1072,7 +1078,8 @@ public class BoardState {
             HashMap<Long, int[]> boardStateBackwardsHash = boardStateBackwards.getGameStateHash();
             int[] backwardsHashKey = boardStateBackwardsHash.get(hashCode);
             if(backwardsHashKey != null){
-                //We found our way home!
+                //We found our way home! Probably...
+                String hashedPath = buildPathFromHash(backwardsHashKey[2]);
 
             }
         }
@@ -1095,6 +1102,14 @@ public class BoardState {
         }
         gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove});
         return true;
+    }
+
+    private String buildPathFromHash(int backwardsPreviousMove) {
+        int[] boardCopy = new int[board.length];
+        for(int i = 0; i < board.length; i++){
+            boardCopy[i] = board[i];
+        }
+        return null;
     }
 
     public void clearCache() {
@@ -1160,6 +1175,10 @@ public class BoardState {
     }
 
     public boolean isFree(int pos) {
+        return (board[pos] & NOT_FREE) == 0;
+    }
+
+    public static boolean isFree(int[] board, int pos) {
         return (board[pos] & NOT_FREE) == 0;
     }
 
