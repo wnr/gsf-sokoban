@@ -198,10 +198,14 @@ public class Main {
             int maxValueBackwards = startValueBackwards + depthValueIncreaser;
             visitedStates = 0;
             if (debug) { System.out.print("Trying maxValue using Backwards " + maxValueBackwards + "... "); }
-            done = dfsBackwards(boardBackwards, 0, maxValueBackwards, false, relativeTimeBackwards + 5000);
+            long maxTime = relativeTimeBackwards + 5000;
+            done = dfsBackwards(boardBackwards, 0, maxValueBackwards, false, maxTime);
             if (debug) {
                 System.out.print("visited " + visitedStates + " states. ");
                 System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTimeBackwards));
+            }
+            if(System.currentTimeMillis() > maxTime){
+                break;
             }
             if (done) { return res; }
         }
@@ -212,11 +216,16 @@ public class Main {
             int maxValueForwards = startValueForwards + depthValueIncreaser;
             visitedStates = 0;
             if (debug) { System.out.print("Trying maxValue using Forwards " + maxValueForwards + "... "); }
-            done = dfs(boardForwards, 0, maxValueForwards, false, false, -1);
+            long maxTime = -1;
+
+            done = dfs(boardForwards, 0, maxValueForwards, false, false, maxTime);
 
             if (debug) {
                 System.out.print("visited " + visitedStates + " states. ");
                 System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTimeForwards));
+            }
+            if(maxTime != -1 && System.currentTimeMillis() > maxTime){
+                throw new RuntimeException();
             }
             if (done) { return res; }
         }
