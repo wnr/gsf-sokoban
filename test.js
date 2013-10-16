@@ -961,7 +961,7 @@ function createDir(dir, cb) {
 
 function compile(cb) {
   var src = path.normalize('src/');
-  execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardStateBackwards.java ' + src + 'BoardUtilBackwards.java ' + src + 'BoardUtil.java ' + src + 'Info.java -d temp/out.sokoban -encoding UTF-8', cb);
+  execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardStateBackwards.java ' + src + 'BoardUtilBackwards.java ' + src + 'BoardUtil.java ' + src + 'BoardLightUtil.java ' + src + 'BoardStateLight.java ' + src + 'Info.java -d temp/out.sokoban -encoding UTF-8', cb);
 }
 
 function test(map, timeout, cb) {

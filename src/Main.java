@@ -16,6 +16,7 @@ public class Main {
     public static void main(String[] args) throws IOException {
         BoardState boardForward = null;
         BoardStateBackwards boardBackward = null;
+        BoardStateLight boardLight = null;
         for (int i = 0; i < args.length; i++) {
             if (args[i].contains("debug") || args[i].contains("-d")) {
                 Main.debug = true;
@@ -46,6 +47,7 @@ public class Main {
                 lines.add(line);
             }
 
+            boardLight = new BoardStateLight(lines);
             if (forwardOrBackwards != BACKWARD) { boardForward = new BoardState(lines); }
             if (forwardOrBackwards != FORWARD) { boardBackward = new BoardStateBackwards(lines); }
         } else if (args.length == 1 || args.length == 2) {
@@ -59,6 +61,7 @@ public class Main {
             }
             if (debug) { System.out.println("Searching for board " + boardNum + "..."); }
 
+            boardLight = BoardLightUtil.getTestBoard(boardNum);
             if (forwardOrBackwards != BACKWARD) {boardForward = BoardUtil.getTestBoard(boardNum); }
             if (forwardOrBackwards != FORWARD) {boardBackward = BoardUtilBackwards.getTestBoard(boardNum);}
 
@@ -131,7 +134,7 @@ public class Main {
 
         if (debug) { System.out.println("Path found: "); }
         System.out.println(path);
-        if (debug) { System.out.println(investigatePath(boardForward, path, false) ? "Path is VALID" : "Path is INVALID"); }
+        if (debug) { System.out.println(investigatePath(boardLight, path, false) ? "Path is VALID" : "Path is INVALID"); }
     }
 
 
@@ -233,14 +236,9 @@ public class Main {
             return true;
         }
         board.analyzeBoard(aggressive);
-        int[] jumps = board.getPossibleJumpPositions();
-        if (jumps == null) { return false; }
-
+        int[] moves = board.getPossibleBoxMoves();
+        if (moves == null) { return false; }
         if (board.getBoardValue() > maxValue) { return false; }
-//        if(board.getBoardValue() != maxValue){
-//            System.out.println(board);
-//            System.out.println(board.getBoardValue() + " " + maxValue);
-//        }
         if (printPath) {
             System.out.println(board);
             System.out.println("Board value: " + board.getBoardValue());
@@ -258,25 +256,10 @@ public class Main {
             res = board.getPathWithBackwards();
             return true;
         }
-        // First try and push a box from where we stand
-        for (int dir = 0; dir < 4; dir++) {
-            if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
-                board.performMove(dir);
-                if (dfs(board, depth + 1, maxValue, aggressive, moveDirectlyToGoal)) { return true; }
-                board.reverseMove();
-            }
-        }
 
-        // Now try moving first and then push
-        for (int jump : jumps) {
-            board.performJump(jump);
-            for (int dir = 0; dir < 4; dir++) {
-                if (board.isBoxInDirection(dir) && board.isGoodMove(dir)) {
-                    board.performMove(dir);
-                    if (dfs(board, depth + 1, maxValue, aggressive, moveDirectlyToGoal)) { return true; }
-                    board.reverseMove();
-                }
-            }
+        for (int move : moves) {
+            board.performBoxMove(move);
+            if (dfs(board, depth + 1, maxValue, aggressive, moveDirectlyToGoal)) { return true; }
             board.reverseMove();
         }
         return false;
@@ -361,7 +344,7 @@ public class Main {
     }
 
 
-    public static boolean investigatePath(BoardState board, String path, boolean displaySteps) {
+    public static boolean investigatePath(BoardStateLight board, String path, boolean displaySteps) {
         if (path == null) { return false; }
         for (char ch : path.toCharArray()) {
             switch (ch) {

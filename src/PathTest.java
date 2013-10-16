@@ -12,7 +12,7 @@ public class PathTest {
             }
         }
 
-        BoardState board = null;
+        BoardStateLight board = null;
         int boardNum = -1;
         if (args.length == 2) {
 
@@ -27,7 +27,7 @@ public class PathTest {
             System.exit(0);
         }
 
-        board = BoardUtil.getTestBoard(boardNum);
+        board = BoardLightUtil.getTestBoard(boardNum);
 
         if (board == null) {
             System.out.println("Invalid board number: " + boardNum);

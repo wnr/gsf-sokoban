@@ -18,7 +18,7 @@ import java.util.ArrayList;
 public class Play {
 
     public static void main(String[] args) throws IOException {
-        BoardState board = null;
+        BoardStateLight board = null;
         if (args.length == 0) {
             // Read board from stdin
             ArrayList<String> lines = new ArrayList<String>();
@@ -31,7 +31,7 @@ public class Play {
                 }
                 lines.add(line);
             }
-            board = new BoardState(lines);
+            board = new BoardStateLight(lines);
         } else if (args.length == 1) {
             int boardNum = -1;
             try {
@@ -41,7 +41,7 @@ public class Play {
                 System.exit(0);
             }
             System.out.println("Searching for board " + boardNum + "...");
-            board = BoardUtil.getTestBoard(boardNum);
+            board = BoardLightUtil.getTestBoard(boardNum);
             if (board == null) {
                 System.out.println("Invalid board number: " + boardNum);
                 System.exit(0);
@@ -49,14 +49,12 @@ public class Play {
             System.out.println("Found board!");
             System.out.println("===================================================");
         }
-        board.setup();
-        System.out.println(board.goalDistToString(0));
         boardInteract(board);
     }
 
 
-    public static void boardInteract(BoardState board) {
-        final BoardState b = board;
+    public static void boardInteract(BoardStateLight board) {
+        final BoardStateLight b = board;
 
         JFrame frame = new JFrame();
 
@@ -71,22 +69,19 @@ public class Play {
                     int move = -1;
                     switch (keyEvent.getKeyCode()) {
                         case KeyEvent.VK_LEFT:
-                            move = BoardState.LEFT;
+                            move = BoardStateLight.LEFT;
                             break;
                         case KeyEvent.VK_UP:
-                            move = BoardState.UP;
+                            move = BoardStateLight.UP;
                             break;
                         case KeyEvent.VK_RIGHT:
-                            move = BoardState.RIGHT;
+                            move = BoardStateLight.RIGHT;
                             break;
                         case KeyEvent.VK_DOWN:
-                            move = BoardState.DOWN;
+                            move = BoardStateLight.DOWN;
                             break;
                         case KeyEvent.VK_SPACE:
                             changed = b.reverseMove();
-                            break;
-                        case KeyEvent.VK_M:
-                            changed = b.moveLatestBoxToGoalIfPossible();
                             break;
                         case KeyEvent.VK_BACK_SPACE:
                             String path = b.backtrackPath();
@@ -96,18 +91,6 @@ public class Play {
                                 System.out.println(path);
                             }
                             break;
-                        case KeyEvent.VK_TAB:
-                            int[] jumps = b.getPossibleJumpPositions();
-                            System.out.print("Possible jumps:");
-                            if (jumps == null) {
-                                System.out.print(jumps);
-                            } else {
-                                for (int jump: jumps) {
-                                    System.out.print(" (" + jump + ")");
-                                }
-                            }
-                            System.out.println();
-                            break;
                         case KeyEvent.VK_ESCAPE:
                             System.exit(0);
                             break;
@@ -115,20 +98,11 @@ public class Play {
                             return false;
                     }
 
-                    boolean goodMove = true;
                     if (move >= 0) {
-                        goodMove = b.isGoodMove(move);
                         changed = b.performMove(move);
                     }
                     if (changed) {
-                        b.analyzeBoard(false);
-//                        System.out.println(b);
-                        System.out.println(b.isDeadLock() ? "Deadlock":"Not deadlock");
-                        System.out.println(b.replaceBoxWithGoalValueToString(0));
-                        System.out.println("Board value: " + b.getBoardValue());
-                        if (!goodMove) {
-                            System.out.println("Board now unsolvable :/");
-                        }
+                        System.out.println(b);
                     }
                     if (b.isBoardSolved()) {
                         System.out.println("Board solved!");

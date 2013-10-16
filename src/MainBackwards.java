@@ -143,7 +143,7 @@ public class MainBackwards {
 //            res = board.backtrackPath();
 //            return true;
 //        }
-//        int[] jumps = board.getPossibleBoxJumpMoves();
+//        int[] jumps = board.getPossibleBoxMoves();
 //        if (jumps == null) return false;
 //        if (board.getBoardValue() > maxValue) { return false; }
 //
