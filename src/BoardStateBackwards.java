@@ -1025,6 +1025,22 @@ public class BoardStateBackwards {
         return true;
     }
 
+    public boolean reverseMove(int[] board, int prevMoveVal) {
+        int prevBoxPos = prevMoveVal >>> 2;
+        int dir = prevMoveVal & 3;
+        int currentBoxPos = prevBoxPos + dx[dir];
+
+//        int nextPrevBoxPos = prevPrevMoveVal >>> 2;
+//        int nextPrevDir = prevPrevMoveVal & 3;
+//        int prevPlayerPos = nextPrevBoxPos + dx[nextPrevDir] + dx[nextPrevDir];
+//        movePlayer(board,prevPlayerPos);
+
+        moveBox(board, currentBoxPos, prevBoxPos);
+
+//        previousMove = nextPrev;
+        return true;
+    }
+
     public int directionLastMove() {
         if (previousMove == null) { return -1; }
         return previousMove.val & 3;
@@ -1063,38 +1079,82 @@ public class BoardStateBackwards {
 
 
             if (nextPrevPlayerPos != -1) {
-                // Move was jump
-                // Have to search for path
                 int startPos = nextPrevPlayerPos;
-                int endPos =prevPlayerPos;
-                int[] prev = new int[totalSize];
-                Arrays.fill(prev, -2);
-                LinkedList<Integer> q = new LinkedList<Integer>();
-                q.add(startPos);
-                prev[startPos] = -1;
-                while (!q.isEmpty()) {
-                    int pos = q.removeFirst();
-                    if (pos == endPos) {
-                        int tempPlayerPos = endPos;
-                        while (prev[tempPlayerPos] != -1) {
-                            int dir = prev[tempPlayerPos];
-                            sb.append(directionCharacters[getOppositeDirection(dir)]);
-                            tempPlayerPos += dx[getOppositeDirection(dir)];
-                        }
-                        break;
-                    }
-                    for (int dir = 0; dir < 4; dir++) {
-                        int newPos = pos + dx[dir];
-                        if (isFree(newPos) && prev[newPos] == -2) {
-                            prev[newPos] = dir;
-                            q.add(newPos);
-                        }
-                    }
-                }
+                int endPos = prevPlayerPos;
+                backtrackPathBFS(board, startPos, endPos, sb);
             }
         }
         return sb.toString();
     }
+
+    private void backtrackPathBFS(int[] board, int startPos, int endPos, StringBuilder sb) {
+
+        int[] prev = new int[totalSize];
+        Arrays.fill(prev, -2);
+        LinkedList<Integer> q = new LinkedList<Integer>();
+        q.add(startPos);
+        prev[startPos] = -1;
+        while (!q.isEmpty()) {
+            int pos = q.removeFirst();
+            if (pos == endPos) {
+                int tempPlayerPos = endPos;
+                while (prev[tempPlayerPos] != -1) {
+                    int dir = prev[tempPlayerPos];
+                    sb.append(directionCharacters[getOppositeDirection(dir)]);
+                    tempPlayerPos += dx[getOppositeDirection(dir)];
+                }
+                break;
+            }
+            for (int dir = 0; dir < 4; dir++) {
+                int newPos = pos + dx[dir];
+                if (isFree(board, newPos) && prev[newPos] == -2) {
+                    prev[newPos] = dir;
+                    q.add(newPos);
+                }
+            }
+        }
+    }
+
+    public String backtrackPathFromHash(int[] board) {
+        long hashCode = boardStateForwards.getHashForBoard(board, dx);
+        int[] keyValues = gameStateHash.get(hashCode);
+        StringBuilder sb = new StringBuilder();
+        int previousMoveVal = keyValues[2];
+        int startPos = -1;
+        int endPos = -1;
+        int prevPrevPlayerPos = -1;
+        while (previousMoveVal != -1) {
+
+            int prevBoxPos = previousMoveVal >>> 2;
+            int prevDir = previousMoveVal & 3;
+            int prevPlayerPos = prevBoxPos + dx[prevDir];
+            startPos = prevPlayerPos + dx[prevDir];
+
+            if (endPos != -1) {
+                backtrackPathBFS(board, startPos, endPos, sb);
+            }
+            sb.append(directionCharacters[getOppositeDirection(prevDir)]);
+            endPos = prevPlayerPos;
+
+            reverseMove(board, previousMoveVal);
+            for(int i = 0; i < board.length; i++){
+                board[i] &= ~PLAYER;
+
+            }
+            board[prevPlayerPos] |= PLAYER;
+
+            hashCode = boardStateForwards.getHashForBoard(board, dx);
+            keyValues = gameStateHash.get(hashCode);
+            if(keyValues != null){
+            previousMoveVal = keyValues[2];
+            }else{
+                previousMoveVal = -1;
+            }
+            //HASH!
+        }
+        return sb.toString();
+    }
+
 
     private String findFirstJumpMovesDFS(boolean[] visitedCells, int currentPlayerPos, int endingPlayerPos) {
         String result = null;
@@ -1127,6 +1187,13 @@ public class BoardStateBackwards {
         board[oldPos] &= 15;
     }
 
+    private void moveBox(int[] board, int oldPos, int newPos) {
+        board[oldPos] &= ~BOX;
+        board[newPos] |= BOX;
+        board[newPos] |= -16 & board[oldPos];
+        board[oldPos] &= 15;
+    }
+
     /*
      * Helper method that does not do error checking
      */
@@ -1135,7 +1202,6 @@ public class BoardStateBackwards {
         board[newPos] |= PLAYER;
         playerPos = newPos;
     }
-
 
     public boolean hashCurrentBoardState(int currentDepth, int currentIteration) {
         long hashCode = getHashCode(playerAndBoxesHashCells);
@@ -1218,6 +1284,10 @@ public class BoardStateBackwards {
     }
 
     public boolean isFree(int pos) {
+        return (board[pos] & NOT_FREE) == 0;
+    }
+
+    private static boolean isFree(int[] board, int pos) {
         return (board[pos] & NOT_FREE) == 0;
     }
 
