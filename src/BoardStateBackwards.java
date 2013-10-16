@@ -1030,14 +1030,14 @@ public class BoardStateBackwards {
         int dir = prevMoveVal & 3;
         int currentBoxPos = prevBoxPos + dx[dir];
 
-//        int nextPrevBoxPos = prevPrevMoveVal >>> 2;
-//        int nextPrevDir = prevPrevMoveVal & 3;
-//        int prevPlayerPos = nextPrevBoxPos + dx[nextPrevDir] + dx[nextPrevDir];
-//        movePlayer(board,prevPlayerPos);
+        //        int nextPrevBoxPos = prevPrevMoveVal >>> 2;
+        //        int nextPrevDir = prevPrevMoveVal & 3;
+        //        int prevPlayerPos = nextPrevBoxPos + dx[nextPrevDir] + dx[nextPrevDir];
+        //        movePlayer(board,prevPlayerPos);
 
         moveBox(board, currentBoxPos, prevBoxPos);
 
-//        previousMove = nextPrev;
+        //        previousMove = nextPrev;
         return true;
     }
 
@@ -1055,6 +1055,7 @@ public class BoardStateBackwards {
      * Resets the board to the starting position and returns the path that was taken
      */
     public String backtrackPath() {
+
         int endingPlayerPos = playerPos;
         String firstJumpMoves = findFirstJumpMovesDFS(new boolean[totalSize], startingPlayerPos, endingPlayerPos);
         StringBuilder sb = new StringBuilder();
@@ -1122,7 +1123,6 @@ public class BoardStateBackwards {
         int previousMoveVal = keyValues[2];
         int startPos = -1;
         int endPos = -1;
-        int prevPrevPlayerPos = -1;
         while (previousMoveVal != -1) {
 
             int prevBoxPos = previousMoveVal >>> 2;
@@ -1137,17 +1137,16 @@ public class BoardStateBackwards {
             endPos = prevPlayerPos;
 
             reverseMove(board, previousMoveVal);
-            for(int i = 0; i < board.length; i++){
+            for (int i = 0; i < board.length; i++) {
                 board[i] &= ~PLAYER;
-
             }
             board[prevPlayerPos] |= PLAYER;
 
             hashCode = boardStateForwards.getHashForBoard(board, dx);
             keyValues = gameStateHash.get(hashCode);
-            if(keyValues != null){
-            previousMoveVal = keyValues[2];
-            }else{
+            if (keyValues != null) {
+                previousMoveVal = keyValues[2];
+            } else {
                 previousMoveVal = -1;
             }
             //HASH!

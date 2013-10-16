@@ -11,7 +11,7 @@ public class BoardState {
     public static final int    INF               = 100000000;
     public static final double DENSE_BOARD_LIMIT = 0.13;
 
-    public static long HASH_MULTIPLIER           = 47;
+    public static long HASH_MULTIPLIER = 47;
 
     public static final char FREE_SPACE_CHAR     = ' ';
     public static final char GOAL_CHAR           = '.';
@@ -65,7 +65,7 @@ public class BoardState {
 
     private int width, height, totalSize;
     private int playerPos, initialPlayerPos;
-    public  int goalCnt, boxCnt;
+    public int goalCnt, boxCnt;
     private int freeCellCount;
 
     private StackEntry previousMove;
@@ -76,7 +76,7 @@ public class BoardState {
     private boolean[]  temporaryWall;
     private int[]      matchedGoal;
     private int[]      matchedBox;
-    private int[] possibleBoxMoves;
+    private int[]      possibleBoxMoves;
     private int[]      tunnels;
     private int[]      goalsInPrioOrder;
     private int[]      prioForGoal;
@@ -223,15 +223,15 @@ public class BoardState {
             }
         }
         LinkedList<Integer> moves = new LinkedList<Integer>();
-//        if (onlyPushBox == -1 && lastMovedBoxPos != -1) {
-//            addMovesForBox(lastMovedBoxPos, boardSections, moves);
-//        }
+        //        if (onlyPushBox == -1 && lastMovedBoxPos != -1) {
+        //            addMovesForBox(lastMovedBoxPos, boardSections, moves);
+        //        }
         for (int i = 0; i < goalCnt; i++) {
             int goal = goalsInPrioOrder[i];
             int box = matchedBox[goal];
             int boxPos = boxCells[box];
-//            if (boxPos == lastMovedBoxPos) continue;
-            if (onlyPushBox != -1 && onlyPushBox != boxPos) continue;
+            //            if (boxPos == lastMovedBoxPos) continue;
+            if (onlyPushBox != -1 && onlyPushBox != boxPos) { continue; }
             if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && getGoalSideDistValue(boxCells[lastMovedBoxIndex], matchedGoal[lastMovedBoxIndex]) != 0) {
                 continue;
             }
@@ -284,14 +284,14 @@ public class BoardState {
                         good = true;
                     }
                 }
-                if (!good) deadLock = true;
+                if (!good) { deadLock = true; }
             }
         }
         return deadLock;
     }
 
     private void checkDeadlockDfs(int pos, boolean[] reachable) {
-        if (reachable[pos]) return;
+        if (reachable[pos]) { return; }
         reachable[pos] = true;
         for (int dir = 0; dir < 4; dir++) {
             int newPos = pos + dx[dir];
@@ -382,34 +382,34 @@ public class BoardState {
     }
 
     private boolean checkIfGoalsStillReachable() {
-        boolean[] reachable = new boolean[4*totalSize];
+        boolean[] reachable = new boolean[4 * totalSize];
         for (int box = 0; box < boxCnt; box++) {
             int boxPos = boxCells[box];
             int side = currentReachableBoxDir[box];
-            if (!reachable[4*boxPos + side]) {
+            if (!reachable[4 * boxPos + side]) {
                 checkIfGoalsStillReachableDfs(boxPos, side, reachable);
             }
         }
         for (int goal = 0; goal < goalCnt; goal++) {
             boolean good = false;
             for (int dir = 0; dir < 4; dir++) {
-                if (reachable[4*goalCells[goal] + dir]) {
+                if (reachable[4 * goalCells[goal] + dir]) {
                     good = true;
                     break;
                 }
             }
-            if (!good) return false;
+            if (!good) { return false; }
         }
         return true;
     }
 
     private void checkIfGoalsStillReachableDfs(int pos, int side, boolean[] visited) {
-        int sideIndex = boxReachableSideIndex[4*pos + side];
+        int sideIndex = boxReachableSideIndex[4 * pos + side];
         for (int dir = 0; dir < 4; dir++) {
-            if (!visited[4*pos + dir] && boxReachableSideIndex[4*pos + dir] == sideIndex) {
-                visited[4*pos + dir] = true;
+            if (!visited[4 * pos + dir] && boxReachableSideIndex[4 * pos + dir] == sideIndex) {
+                visited[4 * pos + dir] = true;
                 int newPos = pos + dx[getOppositeDirection(dir)];
-                if (!isWallOrTemporaryWall(newPos) && !visited[4*newPos + dir]) {
+                if (!isWallOrTemporaryWall(newPos) && !visited[4 * newPos + dir]) {
                     int oppPos = pos + dx[dir];
                     if (!isWallOrTemporaryWall(oppPos)) {
                         checkIfGoalsStillReachableDfs(newPos, dir, visited);
@@ -463,7 +463,7 @@ public class BoardState {
             Arrays.fill(goalSideDist[pos], INF);
         }
 
-        for(int pos = 0; pos < totalSize; pos++){
+        for (int pos = 0; pos < totalSize; pos++) {
             computeReachableSideIndexBFS(pos);
         }
 
@@ -553,21 +553,21 @@ public class BoardState {
         return returnValue;
     }
 
-    public String replaceBoxWithGoalValueToString(int goal){
-            StringBuilder sb = new StringBuilder();
-            for (int pos = 0; pos < totalSize; pos++) {
-                if(isBox(pos)){
-                    int value = getGoalSideDistValue(pos, goal);
-                    sb.append(intToIntOrAscii(value));
-                }else{
-                    sb.append(boardCharacters[board[pos] & 15]);
-                }
-                if (pos % width == width - 1) {
-                    sb.append('\n');
-                }
+    public String replaceBoxWithGoalValueToString(int goal) {
+        StringBuilder sb = new StringBuilder();
+        for (int pos = 0; pos < totalSize; pos++) {
+            if (isBox(pos)) {
+                int value = getGoalSideDistValue(pos, goal);
+                sb.append(intToIntOrAscii(value));
+            } else {
+                sb.append(boardCharacters[board[pos] & 15]);
             }
-            return sb.toString();
+            if (pos % width == width - 1) {
+                sb.append('\n');
+            }
         }
+        return sb.toString();
+    }
 
 
     private int getGoalSideDistValue(int pos, int dir, int goal) {
@@ -591,7 +591,7 @@ public class BoardState {
 
     private void computeReachableSideIndexBFS(int startPos) {
 
-        if(isWall(startPos)){ return;}
+        if (isWall(startPos)) { return;}
         int zoneIndex = 0;
         boolean[] visitedCells = new boolean[board.length];
         for (int startDir = 0; startDir < 4; startDir++) {
@@ -935,7 +935,7 @@ public class BoardState {
      */
     public boolean isGoodMove(int boxMove) {
         int boxPos = boxMove >>> 2;
-        int dir = boxMove&3;
+        int dir = boxMove & 3;
         int newBoxPos = boxPos + dx[dir];
         if (isFree(newBoxPos) && !isTrappingCell(newBoxPos)) {
             boolean good = true;
@@ -1013,7 +1013,7 @@ public class BoardState {
         while (previousMove != null) {
             previousMove.val &= (1 << 22) - 1;
             int boxPos = previousMove.val >>> 2;
-            int dir = previousMove.val&3;
+            int dir = previousMove.val & 3;
             int newBoxPos = boxPos + dx[dir];
             int startPos = boxPos + dx[getOppositeDirection(dir)];
             int endPos = initialPlayerPos;
@@ -1029,7 +1029,7 @@ public class BoardState {
         return sb.reverse().toString();
     }
 
-    private void backtrackPathJumpBFS(int[] board, int startPos, int endPos, StringBuilder sb){
+    private void backtrackPathJumpBFS(int[] board, int startPos, int endPos, StringBuilder sb) {
         int[] prev = new int[board.length];
         Arrays.fill(prev, -2);
         LinkedList<Integer> q = new LinkedList<Integer>();
@@ -1079,19 +1079,37 @@ public class BoardState {
     public boolean hashCurrentBoardState(int currentIteration) {
         long hashCode = getHashCode(playerAndBoxesHashCells);
 
-        if(boardStateBackwards != null){
+        if (boardStateBackwards != null) {
             HashMap<Long, int[]> boardStateBackwardsHash = boardStateBackwards.getGameStateHash();
             int[] backwardsHashKey = boardStateBackwardsHash.get(hashCode);
-            if(backwardsHashKey != null){
+            if (backwardsHashKey != null) {
+                StringBuilder sb = new StringBuilder();
                 //We found our way home! Probably...
-                String hashedPath = buildPathFromHash(backwardsHashKey[2]);
+                int[] boardCopy = new int[board.length];
+                for (int i = 0; i < board.length; i++) {
+                    boardCopy[i] = board[i];
+                }
+                String backwardsPath = boardStateBackwards.backtrackPathFromHash(boardCopy);
 
+                int backwardsPathPrevBoxMove = backwardsHashKey[2];
+                int backwardsBoxPos = backwardsPathPrevBoxMove >>> 2;
+                int backwardsDir = backwardsPathPrevBoxMove & 3;
+                int backwardsPlayerPos = backwardsBoxPos + dx[backwardsDir] * 2;
+
+                StringBuilder tmpSB = new StringBuilder();
+                backtrackPathJumpBFS(board, playerPos, backwardsPlayerPos, tmpSB);
+                String connectionPath = tmpSB.reverse().toString();
+
+                String forwardPath = backtrackPath(); //TODO: Should be done with HASH!!!!
+
+                pathWithBackwards = forwardPath + connectionPath + backwardsPath;
+                return true;
             }
         }
 
         int[] cashedDepthInfo = gameStateHash.get(hashCode);
         if (cashedDepthInfo != null) {
-            int minMovedBoxes= cashedDepthInfo[0];
+            int minMovedBoxes = cashedDepthInfo[0];
             int prevIteration = cashedDepthInfo[1];
             if (minMovedBoxes > movedBoxesCnt || minMovedBoxes == movedBoxesCnt && currentIteration != prevIteration) {
                 // We have been here before but with a bigger depth or in a previous iteration
@@ -1102,16 +1120,16 @@ public class BoardState {
             return false;
         }
         int savedPreviousMove = -1;
-        if(previousMove != null){
+        if (previousMove != null) {
             savedPreviousMove = previousMove.val;
         }
-        gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove});
+        gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove });
         return true;
     }
 
     private String buildPathFromHash(int backwardsPreviousMove) {
         int[] boardCopy = new int[board.length];
-        for(int i = 0; i < board.length; i++){
+        for (int i = 0; i < board.length; i++) {
             boardCopy[i] = board[i];
         }
         return null;
@@ -1296,7 +1314,7 @@ public class BoardState {
         int count = 0;
 
         for (int pos = 0; pos < totalSize; pos++) {
-            if(trappingCells[pos]) {
+            if (trappingCells[pos]) {
                 count++;
             }
         }
@@ -1308,7 +1326,7 @@ public class BoardState {
         int count = 0;
 
         for (int pos = width; pos < totalSize - width; pos++) {
-            if((tunnels[pos] & type) == type) {
+            if ((tunnels[pos] & type) == type) {
                 count++;
             }
         }
@@ -1336,7 +1354,7 @@ public class BoardState {
         int count = 0;
 
         for (int pos = 0; pos < totalSize; pos++) {
-            if(isWall(pos)) {
+            if (isWall(pos)) {
                 count++;
             }
         }
@@ -1355,5 +1373,4 @@ public class BoardState {
     public String getPathWithBackwards() {
         return pathWithBackwards;
     }
-
 }
