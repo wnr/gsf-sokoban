@@ -1204,6 +1204,7 @@ public class BoardStateBackwards {
 
     public boolean hashCurrentBoardState(int currentIteration) {
         boolean good = false;
+        boolean boardForwardsCollision = boardStateForwards != null;
         for (long prime : BoardState.HASH_PRIMES) {
             long hashCode = getHashCode(playerAndBoxesHashCells, prime);
 
@@ -1227,7 +1228,53 @@ public class BoardStateBackwards {
                 gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove });
                 good = true;
             }
+
+            if (boardForwardsCollision) {
+                int[] backwardsHashKey = boardStateForwards.getGameStateHash().get(hashCode);
+                if (backwardsHashKey == null) {
+                    boardForwardsCollision = false;
+                }
+            }
         }
+
+        // If we found a collision for all primes we want to check the bidirectional path
+        if (boardForwardsCollision) {
+            for (long prime : BoardState.HASH_PRIMES) {
+                if (pathWithForwards == null) {
+                    //We found our way home! Probably...
+                    int[] boardCopy = new int[board.length];
+                    for (int i = 0; i < board.length; i++) {
+                        boardCopy[i] = board[i];
+                    }
+                    String forwardPath = boardStateForwards.backtrackPathFromHash(boardCopy, prime);
+
+                    long hashCode = getHashCode(playerAndBoxesHashCells, prime);
+                    int[] forwardHashKey = boardStateForwards.getGameStateHash().get(hashCode);
+
+                    int forwardPathPrevBoxMove = forwardHashKey[2];
+                    int forwardBoxPos = forwardPathPrevBoxMove >>> 2;
+                    int forwardDir = forwardPathPrevBoxMove & 3;
+                    int forwardPlayerPos = forwardBoxPos;
+
+                    StringBuilder tmpSB = new StringBuilder();
+                    backtrackPathBFS(board, forwardPlayerPos, playerPos, tmpSB);
+                    String connectionPath = tmpSB.reverse().toString();
+
+                    int[] boardCopy2 = new int[board.length];
+                    for (int i = 0; i < board.length; i++) {
+                        boardCopy2[i] = board[i];
+                    }
+                    String backwardPath = backtrackPathFromHash(boardCopy2, prime);
+
+                    pathWithForwards = forwardPath + connectionPath + backwardPath;
+                    if (!Main.investigatePath(pathWithForwards)) {
+                        pathWithForwards = null;
+                    }
+                }
+            }
+            if (pathWithForwards != null) return true;
+        }
+
         return good;
     }
 

@@ -995,6 +995,14 @@ public class BoardState {
         return true;
     }
 
+    public boolean reverseMove(int[] board, int moveVal) {
+        int oldBoxPos = moveVal >>> 2;
+        int dir = moveVal & 3;
+        int newBoxPos = oldBoxPos + dx[dir];
+        moveBox(board, newBoxPos, oldBoxPos);
+        return true;
+    }
+
     public int directionLastMove() {
         if (previousMove == null) { return -1; }
         return previousMove.val & 3;
@@ -1066,6 +1074,13 @@ public class BoardState {
         board[oldPos] &= 15;
     }
 
+    private void moveBox(int[] board, int oldPos, int newPos) {
+        board[oldPos] &= ~BOX;
+        board[newPos] |= BOX;
+        board[newPos] |= -16 & board[oldPos];
+        board[oldPos] &= 15;
+    }
+
     /*
      * Helper method that does not do error checking
      */
@@ -1075,6 +1090,46 @@ public class BoardState {
         playerPos = newPos;
     }
 
+    public String backtrackPathFromHash(int[] board, long prime) {
+        long hashCode = getHashForBoard(board, prime, dx);
+        int[] keyValues = gameStateHash.get(hashCode);
+        StringBuilder sb = new StringBuilder();
+        int previousMoveVal = keyValues[2];
+        int startPos = -1;
+        int endPos = -1;
+        while (previousMoveVal != -1) {
+
+            int prevBoxPos = previousMoveVal >>> 2;
+            int prevDir = previousMoveVal & 3;
+            int prevPlayerPos = prevBoxPos + dx[getOppositeDirection(prevDir)];
+            startPos = prevBoxPos;
+
+            if (endPos != -1) {
+                backtrackPathJumpBFS(board, startPos, endPos, sb);
+            }
+            sb.append(directionCharacters[prevDir]);
+            endPos = prevPlayerPos;
+
+            reverseMove(board, previousMoveVal);
+            for (int i = 0; i < board.length; i++) {
+                board[i] &= ~PLAYER;
+            }
+            board[prevPlayerPos] |= PLAYER;
+
+            hashCode = getHashForBoard(board, prime, dx);
+            keyValues = gameStateHash.get(hashCode);
+            if (keyValues != null) {
+                previousMoveVal = keyValues[2];
+            } else {
+                previousMoveVal = -1;
+            }
+        }
+        // Add path from initial position
+        if (endPos != -1) {
+            backtrackPathJumpBFS(board, initialPlayerPos, endPos, sb);
+        }
+        return sb.reverse().toString();
+    }
 
     public boolean hashCurrentBoardState(int currentIteration) {
         boolean good = false;
@@ -1107,7 +1162,6 @@ public class BoardState {
                 int[] backwardsHashKey = boardStateBackwards.getGameStateHash().get(hashCode);
                 if (backwardsHashKey == null) {
                     boardBackwardsCollision = false;
-                } else {
                 }
             }
         }
@@ -1116,13 +1170,12 @@ public class BoardState {
         if (boardBackwardsCollision) {
             for (long prime : HASH_PRIMES) {
                 if (pathWithBackwards == null) {
-                    StringBuilder sb = new StringBuilder();
                     //We found our way home! Probably...
                     int[] boardCopy = new int[board.length];
                     for (int i = 0; i < board.length; i++) {
                         boardCopy[i] = board[i];
                     }
-                    String backwardsPath = boardStateBackwards.backtrackPathFromHash(boardCopy, HASH_PRIMES[0]);
+                    String backwardsPath = boardStateBackwards.backtrackPathFromHash(boardCopy, prime);
 
                     long hashCode = getHashCode(playerAndBoxesHashCells, prime);
                     int[] backwardsHashKey = boardStateBackwards.getGameStateHash().get(hashCode);
@@ -1136,10 +1189,14 @@ public class BoardState {
                     backtrackPathJumpBFS(board, playerPos, backwardsPlayerPos, tmpSB);
                     String connectionPath = tmpSB.reverse().toString();
 
-                    String forwardPath = backtrackPath(); //TODO: Should be done with HASH!!!!
+                    int[] boardCopy2 = new int[board.length];
+                    for (int i = 0; i < board.length; i++) {
+                        boardCopy2[i] = board[i];
+                    }
+                    String forwardPath = backtrackPathFromHash(boardCopy2, prime);
 
                     pathWithBackwards = forwardPath + connectionPath + backwardsPath;
-                    // TODO Check if path is valid
+                    if (!Main.investigatePath(pathWithBackwards)) pathWithBackwards = null;
                 }
             }
             if (pathWithBackwards != null) return true;

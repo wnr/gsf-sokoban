@@ -12,11 +12,11 @@ public class Main {
     public static boolean printPath          = false;
     public static int     forwardOrBackwards = BI_DIR;
 
+    public static BoardStateLight testBoard;
 
     public static void main(String[] args) throws IOException {
         BoardState boardForward = null;
         BoardStateBackwards boardBackward = null;
-        BoardStateLight boardLight = null;
         for (int i = 0; i < args.length; i++) {
             if (args[i].contains("debug") || args[i].contains("-d")) {
                 Main.debug = true;
@@ -47,7 +47,7 @@ public class Main {
                 lines.add(line);
             }
 
-            boardLight = new BoardStateLight(lines);
+            testBoard = new BoardStateLight(lines);
             if (forwardOrBackwards != BACKWARD) { boardForward = new BoardState(lines); }
             if (forwardOrBackwards != FORWARD) { boardBackward = new BoardStateBackwards(lines); }
         } else if (args.length == 1 || args.length == 2) {
@@ -61,7 +61,7 @@ public class Main {
             }
             if (debug) { System.out.println("Searching for board " + boardNum + "..."); }
 
-            boardLight = BoardLightUtil.getTestBoard(boardNum);
+            testBoard = BoardLightUtil.getTestBoard(boardNum);
             if (forwardOrBackwards != BACKWARD) {boardForward = BoardUtil.getTestBoard(boardNum); }
             if (forwardOrBackwards != FORWARD) {boardBackward = BoardUtilBackwards.getTestBoard(boardNum);}
 
@@ -134,7 +134,7 @@ public class Main {
 
         if (debug) { System.out.println("Path found: "); }
         System.out.println(path);
-        if (debug) { System.out.println(investigatePath(boardLight, path, false) ? "Path is VALID" : "Path is INVALID"); }
+        if (debug) { System.out.println(investigatePath(testBoard, path, false) ? "Path is VALID" : "Path is INVALID"); }
     }
 
 
@@ -252,7 +252,6 @@ public class Main {
             }
 
             if (relativeTimeForwards < relativeTimeBackwards) {
-
                 nextToGo = FORWARD;
             } else {
                 nextToGo = BACKWARD;
@@ -395,6 +394,9 @@ public class Main {
         return false;
     }
 
+    public static boolean investigatePath(String path) {
+        return investigatePath(testBoard, path, false);
+    }
 
     public static boolean investigatePath(BoardStateLight board, String path, boolean displaySteps) {
         if (path == null) { return false; }
