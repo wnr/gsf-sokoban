@@ -4,9 +4,9 @@ import java.util.*;
 
 public class Main {
 
-    public static final int FORWARD  = 0;
-    public static final int BACKWARD = 1;
-    public static final int BI_DIR   = 2;
+    public static final int FORWARD  = 1;
+    public static final int BACKWARD = 2;
+    public static final int BI_DIR   = 3;
 
     public static boolean debug              = false;
     public static boolean printPath          = false;
@@ -104,13 +104,13 @@ public class Main {
         } else if (forwardOrBackwards == BACKWARD) {
             if (debug) {System.out.println("Using only Backward algorithms");}
 
-//            path = aggressiveSearchBackwards(boardBackward);
+            //            path = aggressiveSearchBackwards(boardBackward);
 
             if (path == null) {
                 if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
                 //                boardBackward.clearCache();
                 boardBackward.analyzeBoard(false);
-//                boardBackward.initializeBoxToGoalMapping();
+                //                boardBackward.initializeBoxToGoalMapping();
                 path = idAStarBackwards(boardBackward);
             } else {
                 if (debug) { System.out.println("Aggressive search succeeded!"); }
@@ -119,7 +119,7 @@ public class Main {
             boardBackward.setBoardStateForwards(boardForward);
             boardForward.setBoardStateBackwards(boardBackward);
             if (debug) {System.out.println("Using Forward AND Backwards algorithms");}
-            path = aggressiveSearch(boardForward);
+                        path = aggressiveSearch(boardForward);
             if (path == null) {
                 if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
                 boardForward.clearCache();
@@ -186,52 +186,78 @@ public class Main {
     }
 
     public static String idAStarBi(BoardState boardForwards, BoardStateBackwards boardBackwards) {
-        long startTime = System.currentTimeMillis();
         res = null;
         boolean done;
         int startValueForwards = boardForwards.getBoardValue();
         int startValueBackwards = boardBackwards.getBoardValue();
+        int depthIncreaser = 2;
+        int maxForwardsDepthValue = startValueForwards;
+        int maxBackwardsDepthValue = startValueBackwards;
 
-        long relativeTimeBackwards = System.currentTimeMillis();
 
-        for (int depthValueIncreaser = 0; !debug || depthValueIncreaser < 500; depthValueIncreaser += 2) {
-            int maxValueBackwards = startValueBackwards + depthValueIncreaser;
-            visitedStates = 0;
-            if (debug) { System.out.print("Trying maxValue using Backwards " + maxValueBackwards + "... "); }
-            long maxTime = relativeTimeBackwards + 5000;
-            done = dfsBackwards(boardBackwards, 0, maxValueBackwards, false, maxTime);
-            if (debug) {
-                System.out.print("visited " + visitedStates + " states. ");
-                System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTimeBackwards));
+        long totalTimeBackwards = 0;
+        long totalTimeForwards = 0;
+        long relativeTimeForwards = 0;
+        long relativeTimeBackwards = 0;
+        long maximumRunningTimeDFS = 5500;
+
+        int nextToGo = BI_DIR;
+        while (true) {
+            if ((nextToGo & FORWARD) == FORWARD) {
+
+                maxForwardsDepthValue += depthIncreaser;
+                visitedStates = 0;
+                if (debug) { System.out.print("Trying maxValue using Forwards " + maxForwardsDepthValue + "... "); }
+
+                long relativeStartTime = System.currentTimeMillis();
+
+                done = dfs(boardForwards, 0, maxForwardsDepthValue, false, false, System.currentTimeMillis() + maximumRunningTimeDFS);
+
+                relativeTimeForwards = System.currentTimeMillis() - relativeStartTime;
+                totalTimeForwards += relativeTimeForwards;
+
+                if (debug) {
+                    System.out.print("visited " + visitedStates + " states. ");
+                    System.out.println("Total time forwards: " + totalTimeForwards + " Relative time: " + relativeTimeForwards);
+                }
+
+                if (done) {
+                    if (debug) {System.out.println("Total time taken: " + (totalTimeBackwards + totalTimeForwards));}
+                    return res;
+                }
             }
-            if(System.currentTimeMillis() > maxTime){
-                break;
+
+            if ((nextToGo & BACKWARD) == BACKWARD) {
+
+                maxBackwardsDepthValue += depthIncreaser;
+
+                visitedStates = 0;
+                if (debug) { System.out.print("Trying maxValue using Backwards " + maxBackwardsDepthValue + "... "); }
+
+                long relativeStartTime = System.currentTimeMillis();
+
+                done = dfsBackwards(boardBackwards, 0, maxBackwardsDepthValue, false, System.currentTimeMillis() + maximumRunningTimeDFS);
+
+                relativeTimeBackwards = System.currentTimeMillis() - relativeStartTime;
+                totalTimeBackwards += relativeTimeBackwards;
+
+                if (debug) {
+                    System.out.print("visited " + visitedStates + " states. ");
+                    System.out.println("Total time backwards: " + totalTimeBackwards + " Relative time: " + relativeTimeBackwards);
+                }
+                if (done) {
+                    if (debug) {System.out.println("Total time taken: " + (totalTimeBackwards + totalTimeForwards));}
+                    return res;
+                }
             }
-            if (done) { return res; }
+
+            if (relativeTimeForwards < relativeTimeBackwards) {
+
+                nextToGo = FORWARD;
+            } else {
+                nextToGo = BACKWARD;
+            }
         }
-
-        long relativeTimeForwards = System.currentTimeMillis();
-
-        for (int depthValueIncreaser = 0; !debug || depthValueIncreaser < 500; depthValueIncreaser += 2) {
-            int maxValueForwards = startValueForwards + depthValueIncreaser;
-            visitedStates = 0;
-            if (debug) { System.out.print("Trying maxValue using Forwards " + maxValueForwards + "... "); }
-            long maxTime = -1;
-
-            done = dfs(boardForwards, 0, maxValueForwards, false, false, maxTime);
-
-            if (debug) {
-                System.out.print("visited " + visitedStates + " states. ");
-                System.out.println("Total time: " + (System.currentTimeMillis() - startTime) + " Relative time: " + (System.currentTimeMillis() - relativeTimeForwards));
-            }
-            if(maxTime != -1 && System.currentTimeMillis() > maxTime){
-                throw new RuntimeException();
-            }
-            if (done) { return res; }
-        }
-
-
-        return null;
     }
 
 
@@ -245,7 +271,7 @@ public class Main {
 
     private static boolean dfs(BoardState board, int depth, int maxValue, boolean aggressive, boolean moveDirectlyToGoal, long maxTime) {
 
-        if(maxTime != -1 && System.currentTimeMillis() > maxTime){
+        if (maxTime != -1 && System.currentTimeMillis() > maxTime) {
             return false;
         }
         visitedStates++;
@@ -315,7 +341,7 @@ public class Main {
 
     private static boolean dfsBackwards(BoardStateBackwards board, int depth, int maxValue, boolean aggressive, long maxTime) {
 
-        if(maxTime != -1 && System.currentTimeMillis() > maxTime){
+        if (maxTime != -1 && System.currentTimeMillis() > maxTime) {
             return false;
         }
 
