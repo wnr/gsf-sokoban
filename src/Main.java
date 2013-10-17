@@ -343,7 +343,7 @@ public class Main {
             }
         }
 
-        if (!board.hashCurrentBoardState(depth, maxValue)) { return false; }
+        if (!board.hashCurrentBoardState(maxValue)) { return false; }
         if (board.getPathWithForwards() != null) {
             res = board.getPathWithForwards();
             return true;

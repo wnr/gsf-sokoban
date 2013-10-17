@@ -11,7 +11,7 @@ public class BoardState {
     public static final int    INF               = 100000000;
     public static final double DENSE_BOARD_LIMIT = 0.13;
 
-    public static long HASH_MULTIPLIER = 47;
+    public static long[] HASH_PRIMES= {1931, 6719};
 
     public static final char FREE_SPACE_CHAR     = ' ';
     public static final char GOAL_CHAR           = '.';
@@ -1077,54 +1077,75 @@ public class BoardState {
 
 
     public boolean hashCurrentBoardState(int currentIteration) {
-        long hashCode = getHashCode(playerAndBoxesHashCells);
+        boolean good = false;
+        boolean boardBackwardsCollision = boardStateBackwards != null;
+        for (long prime : HASH_PRIMES) {
+            long hashCode = getHashCode(playerAndBoxesHashCells, prime);
 
-        if (boardStateBackwards != null) {
-            HashMap<Long, int[]> boardStateBackwardsHash = boardStateBackwards.getGameStateHash();
-            int[] backwardsHashKey = boardStateBackwardsHash.get(hashCode);
-            if (backwardsHashKey != null) {
-                StringBuilder sb = new StringBuilder();
-                //We found our way home! Probably...
-                int[] boardCopy = new int[board.length];
-                for (int i = 0; i < board.length; i++) {
-                    boardCopy[i] = board[i];
+            int savedPreviousMove = -1;
+            if (previousMove != null) {
+                savedPreviousMove = previousMove.val;
+            }
+
+            int[] cashedDepthInfo = gameStateHash.get(hashCode);
+            if (cashedDepthInfo != null) {
+                int minMovedBoxes = cashedDepthInfo[0];
+                int prevIteration = cashedDepthInfo[1];
+                if (minMovedBoxes > movedBoxesCnt || minMovedBoxes == movedBoxesCnt && currentIteration != prevIteration) {
+                    // We have been here before but with a bigger depth or in a previous iteration
+                    cashedDepthInfo[0] = movedBoxesCnt;
+                    cashedDepthInfo[1] = currentIteration;
+                    cashedDepthInfo[2] = savedPreviousMove;
+                    good = true;
                 }
-                String backwardsPath = boardStateBackwards.backtrackPathFromHash(boardCopy);
+            } else {
+                gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove });
+                good = true;
+            }
 
-                int backwardsPathPrevBoxMove = backwardsHashKey[2];
-                int backwardsBoxPos = backwardsPathPrevBoxMove >>> 2;
-                int backwardsDir = backwardsPathPrevBoxMove & 3;
-                int backwardsPlayerPos = backwardsBoxPos + dx[backwardsDir] * 2;
-
-                StringBuilder tmpSB = new StringBuilder();
-                backtrackPathJumpBFS(board, playerPos, backwardsPlayerPos, tmpSB);
-                String connectionPath = tmpSB.reverse().toString();
-
-                String forwardPath = backtrackPath(); //TODO: Should be done with HASH!!!!
-
-                pathWithBackwards = forwardPath + connectionPath + backwardsPath;
-                return true;
+            if (boardBackwardsCollision) {
+                int[] backwardsHashKey = boardStateBackwards.getGameStateHash().get(hashCode);
+                if (backwardsHashKey == null) {
+                    boardBackwardsCollision = false;
+                } else {
+                }
             }
         }
 
-        int[] cashedDepthInfo = gameStateHash.get(hashCode);
-        if (cashedDepthInfo != null) {
-            int minMovedBoxes = cashedDepthInfo[0];
-            int prevIteration = cashedDepthInfo[1];
-            if (minMovedBoxes > movedBoxesCnt || minMovedBoxes == movedBoxesCnt && currentIteration != prevIteration) {
-                // We have been here before but with a bigger depth or in a previous iteration
-                cashedDepthInfo[0] = movedBoxesCnt;
-                cashedDepthInfo[1] = currentIteration;
-                return true;
+        // If we found a collision for all primes we want to check the bidirectional path
+        if (boardBackwardsCollision) {
+            for (long prime : HASH_PRIMES) {
+                if (pathWithBackwards == null) {
+                    StringBuilder sb = new StringBuilder();
+                    //We found our way home! Probably...
+                    int[] boardCopy = new int[board.length];
+                    for (int i = 0; i < board.length; i++) {
+                        boardCopy[i] = board[i];
+                    }
+                    String backwardsPath = boardStateBackwards.backtrackPathFromHash(boardCopy, HASH_PRIMES[0]);
+
+                    long hashCode = getHashCode(playerAndBoxesHashCells, prime);
+                    int[] backwardsHashKey = boardStateBackwards.getGameStateHash().get(hashCode);
+
+                    int backwardsPathPrevBoxMove = backwardsHashKey[2];
+                    int backwardsBoxPos = backwardsPathPrevBoxMove >>> 2;
+                    int backwardsDir = backwardsPathPrevBoxMove & 3;
+                    int backwardsPlayerPos = backwardsBoxPos + dx[backwardsDir] * 2;
+
+                    StringBuilder tmpSB = new StringBuilder();
+                    backtrackPathJumpBFS(board, playerPos, backwardsPlayerPos, tmpSB);
+                    String connectionPath = tmpSB.reverse().toString();
+
+                    String forwardPath = backtrackPath(); //TODO: Should be done with HASH!!!!
+
+                    pathWithBackwards = forwardPath + connectionPath + backwardsPath;
+                    // TODO Check if path is valid
+                }
             }
-            return false;
+            if (pathWithBackwards != null) return true;
         }
-        int savedPreviousMove = -1;
-        if (previousMove != null) {
-            savedPreviousMove = previousMove.val;
-        }
-        gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove });
-        return true;
+
+        return good;
     }
 
     private String buildPathFromHash(int backwardsPreviousMove) {
@@ -1139,12 +1160,12 @@ public class BoardState {
         gameStateHash.clear();
     }
 
-    public static long getHashForBoard(int[] board, int[] dx) {
+    public static long getHashForBoard(int[] board, long prime, int[] dx) {
         long res = 0;
         int playerPos = -1;
         for (int i = 0; i < board.length; i++) {
             if ((board[i] & BOX) != 0) {
-                res = res * HASH_MULTIPLIER + i;
+                res = res * prime + i;
             }
             if ((board[i] & PLAYER) != 0) {
                 playerPos = i;
@@ -1152,7 +1173,7 @@ public class BoardState {
         }
         boolean[] visited = new boolean[board.length];
         int mostUpLeftPos = getHashForBoardDfs(playerPos, board, dx, visited);
-        res = res * HASH_MULTIPLIER + mostUpLeftPos + board.length;
+        res = res * prime + mostUpLeftPos + board.length;
         return res;
     }
 
@@ -1168,10 +1189,10 @@ public class BoardState {
         return res;
     }
 
-    private static long getHashCode(int[] array) {
+    private static long getHashCode(int[] array, long prime) {
         long hash = 0;
         for (int i = 0; i < array.length; i++) {
-            hash = hash * HASH_MULTIPLIER + array[i];
+            hash = hash * prime + array[i];
         }
         return hash;
     }

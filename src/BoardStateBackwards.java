@@ -141,7 +141,7 @@ public class BoardStateBackwards {
         int[] tempPlayerAndBoxesHashCells = new int[boxCnt + 1];
         tempPlayerAndBoxesHashCells[boxCnt] = totalSize + mostUpLeftPos;
         oneTimeUseLocateGoalCellsInOrder(tempPlayerAndBoxesHashCells);
-        startingPositionHash = getHashCode(tempPlayerAndBoxesHashCells);
+        startingPositionHash = getHashCode(tempPlayerAndBoxesHashCells, BoardState.HASH_PRIMES[0]);
 
 
         boolean[] visited = new boolean[totalSize];
@@ -1116,8 +1116,8 @@ public class BoardStateBackwards {
         }
     }
 
-    public String backtrackPathFromHash(int[] board) {
-        long hashCode = boardStateForwards.getHashForBoard(board, dx);
+    public String backtrackPathFromHash(int[] board, long prime) {
+        long hashCode = boardStateForwards.getHashForBoard(board, prime, dx);
         int[] keyValues = gameStateHash.get(hashCode);
         StringBuilder sb = new StringBuilder();
         int previousMoveVal = keyValues[2];
@@ -1142,7 +1142,7 @@ public class BoardStateBackwards {
             }
             board[prevPlayerPos] |= PLAYER;
 
-            hashCode = boardStateForwards.getHashForBoard(board, dx);
+            hashCode = boardStateForwards.getHashForBoard(board, prime, dx);
             keyValues = gameStateHash.get(hashCode);
             if (keyValues != null) {
                 previousMoveVal = keyValues[2];
@@ -1202,32 +1202,39 @@ public class BoardStateBackwards {
         playerPos = newPos;
     }
 
-    public boolean hashCurrentBoardState(int currentDepth, int currentIteration) {
-        long hashCode = getHashCode(playerAndBoxesHashCells);
-        int[] cashedDepthInfo = gameStateHash.get(hashCode);
-        if (cashedDepthInfo != null) {
-            int minDepth = cashedDepthInfo[0];
-            int prevIteration = cashedDepthInfo[1];
-            if (minDepth > currentDepth || minDepth == currentDepth && currentIteration != prevIteration) {
-                // We have been here before but with a bigger depth or in a previous iteration
-                cashedDepthInfo[0] = currentDepth;
-                cashedDepthInfo[1] = currentIteration;
-                return true;
+    public boolean hashCurrentBoardState(int currentIteration) {
+        boolean good = false;
+        for (long prime : BoardState.HASH_PRIMES) {
+            long hashCode = getHashCode(playerAndBoxesHashCells, prime);
+
+            int savedPreviousMove = -1;
+            if (previousMove != null) {
+                savedPreviousMove = previousMove.val;
             }
-            return false;
+
+            int[] cashedDepthInfo = gameStateHash.get(hashCode);
+            if (cashedDepthInfo != null) {
+                int minMovedBoxes = cashedDepthInfo[0];
+                int prevIteration = cashedDepthInfo[1];
+                if (minMovedBoxes > movedBoxesCnt || minMovedBoxes == movedBoxesCnt && currentIteration != prevIteration) {
+                    // We have been here before but with a bigger depth or in a previous iteration
+                    cashedDepthInfo[0] = movedBoxesCnt;
+                    cashedDepthInfo[1] = currentIteration;
+                    cashedDepthInfo[2] = savedPreviousMove;
+                    good = true;
+                }
+            } else {
+                gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove });
+                good = true;
+            }
         }
-        int savedPreviousMove = -1;
-        if (previousMove != null) {
-            savedPreviousMove = previousMove.val;
-        }
-        gameStateHash.put(hashCode, new int[]{ currentDepth, currentIteration, savedPreviousMove });
-        return true;
+        return good;
     }
 
-    private long getHashCode(int[] array) {
+    private long getHashCode(int[] array, long prime) {
         long hash = 0;
         for (int i = 0; i < array.length; i++) {
-            hash = hash * 47 + array[i];
+            hash = hash * prime + array[i];
         }
         return hash;
     }
@@ -1305,7 +1312,7 @@ public class BoardStateBackwards {
                 return false;
             }
         }
-        return getHashCode(playerAndBoxesHashCells) == startingPositionHash;
+        return getHashCode(playerAndBoxesHashCells, BoardState.HASH_PRIMES[0]) == startingPositionHash;
     }
 
     public String toString() {
