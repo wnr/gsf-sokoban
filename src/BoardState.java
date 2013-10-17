@@ -11,7 +11,7 @@ public class BoardState {
     public static final int    INF               = 100000000;
     public static final double DENSE_BOARD_LIMIT = 0.13;
 
-    public static long[] HASH_PRIMES= {1931, 6719};
+    public static long[] HASH_PRIMES= {47, 6719};
 
     public static final char FREE_SPACE_CHAR     = ' ';
     public static final char GOAL_CHAR           = '.';
@@ -988,6 +988,7 @@ public class BoardState {
             if (temporaryWall[newBoxPos]) {
                 removeTemporaryWallsDfs(newBoxPos);
             }
+            updateMatchingForBox(getBoxNumber(oldBoxPos));
             movedBoxesCnt--;
             previousMove = previousMove.prev;
             currentReachableBoxDir[getBoxNumber(oldBoxPos)] = getOppositeDirection(dir);
@@ -999,6 +1000,8 @@ public class BoardState {
         int oldBoxPos = moveVal >>> 2;
         int dir = moveVal & 3;
         int newBoxPos = oldBoxPos + dx[dir];
+        int oldPlayerPos = oldBoxPos + dx[getOppositeDirection(dir)];
+        if (!isBox(board, newBoxPos) || !isFree(board, oldBoxPos) || !isFree(board, oldPlayerPos)) return false;
         moveBox(board, newBoxPos, oldBoxPos);
         return true;
     }
@@ -1095,6 +1098,7 @@ public class BoardState {
         int[] keyValues = gameStateHash.get(hashCode);
         StringBuilder sb = new StringBuilder();
         int previousMoveVal = keyValues[2];
+
         int startPos = -1;
         int endPos = -1;
         while (previousMoveVal != -1) {
@@ -1110,7 +1114,9 @@ public class BoardState {
             sb.append(directionCharacters[prevDir]);
             endPos = prevPlayerPos;
 
-            reverseMove(board, previousMoveVal);
+            if (!reverseMove(board, previousMoveVal)) {
+                return "";
+            }
             for (int i = 0; i < board.length; i++) {
                 board[i] &= ~PLAYER;
             }
@@ -1133,16 +1139,16 @@ public class BoardState {
 
     public boolean hashCurrentBoardState(int currentIteration) {
         boolean good = false;
-        boolean boardBackwardsCollision = boardStateBackwards != null;
-        for (long prime : HASH_PRIMES) {
-            long hashCode = getHashCode(playerAndBoxesHashCells, prime);
+        long[] hashes = new long[HASH_PRIMES.length];
+        int savedPreviousMove = -1;
+        if (previousMove != null) {
+            savedPreviousMove = previousMove.val;
+        }
+        for (int i = 0; i < hashes.length; i++) {
+            long prime = HASH_PRIMES[i];
+            hashes[i] = getHashCode(playerAndBoxesHashCells, prime);
 
-            int savedPreviousMove = -1;
-            if (previousMove != null) {
-                savedPreviousMove = previousMove.val;
-            }
-
-            int[] cashedDepthInfo = gameStateHash.get(hashCode);
+            int[] cashedDepthInfo = gameStateHash.get(hashes[i]);
             if (cashedDepthInfo != null) {
                 int minMovedBoxes = cashedDepthInfo[0];
                 int prevIteration = cashedDepthInfo[1];
@@ -1154,20 +1160,21 @@ public class BoardState {
                     good = true;
                 }
             } else {
-                gameStateHash.put(hashCode, new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove });
+                gameStateHash.put(hashes[i], new int[]{ movedBoxesCnt, currentIteration, savedPreviousMove });
                 good = true;
             }
-
-            if (boardBackwardsCollision) {
-                int[] backwardsHashKey = boardStateBackwards.getGameStateHash().get(hashCode);
-                if (backwardsHashKey == null) {
-                    boardBackwardsCollision = false;
-                }
-            }
+        }
+        if (!good) {
+            return false;
         }
 
         // If we found a collision for all primes we want to check the bidirectional path
-        if (boardBackwardsCollision) {
+        if (boardStateBackwards != null) {
+            for (long hash : hashes) {
+                if (boardStateBackwards.getGameStateHash().get(hash) == null) {
+                    return true;
+                }
+            }
             for (long prime : HASH_PRIMES) {
                 if (pathWithBackwards == null) {
                     //We found our way home! Probably...
@@ -1185,8 +1192,12 @@ public class BoardState {
                     int backwardsDir = backwardsPathPrevBoxMove & 3;
                     int backwardsPlayerPos = backwardsBoxPos + dx[backwardsDir] * 2;
 
+                    int playerStartPos = initialPlayerPos;
+                    if (previousMove != null) {
+                        playerStartPos = previousMove.val >>> 2;
+                    }
                     StringBuilder tmpSB = new StringBuilder();
-                    backtrackPathJumpBFS(board, playerPos, backwardsPlayerPos, tmpSB);
+                    backtrackPathJumpBFS(board, playerStartPos, backwardsPlayerPos, tmpSB);
                     String connectionPath = tmpSB.reverse().toString();
 
                     int[] boardCopy2 = new int[board.length];
@@ -1196,13 +1207,18 @@ public class BoardState {
                     String forwardPath = backtrackPathFromHash(boardCopy2, prime);
 
                     pathWithBackwards = forwardPath + connectionPath + backwardsPath;
-                    if (!Main.investigatePath(pathWithBackwards)) pathWithBackwards = null;
+                    if (!Main.investigatePath(pathWithBackwards)) {
+                        pathWithBackwards = null;
+                    } else {
+//                        System.out.println("Success from FORWARD");
+//                        System.out.println(forwardPath);
+//                        System.out.println(connectionPath);
+//                        System.out.println(backwardsPath);
+                    }
                 }
             }
-            if (pathWithBackwards != null) return true;
         }
-
-        return good;
+        return true;
     }
 
     private String buildPathFromHash(int backwardsPreviousMove) {
@@ -1289,6 +1305,10 @@ public class BoardState {
     }
 
     public boolean isBox(int pos) {
+        return (board[pos] & BOX) != 0;
+    }
+
+    public static boolean isBox(int[] board, int pos) {
         return (board[pos] & BOX) != 0;
     }
 

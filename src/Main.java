@@ -119,7 +119,7 @@ public class Main {
             boardBackward.setBoardStateForwards(boardForward);
             boardForward.setBoardStateBackwards(boardBackward);
             if (debug) {System.out.println("Using Forward AND Backwards algorithms");}
-                        path = aggressiveSearch(boardForward);
+            path = aggressiveSearch(boardForward);
             if (path == null) {
                 if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
                 boardForward.clearCache();
@@ -194,6 +194,8 @@ public class Main {
         int maxForwardsDepthValue = startValueForwards;
         int maxBackwardsDepthValue = startValueBackwards;
 
+        long prevNumStatesBackward = -1;
+        int sameNumStatesCnt = 0;
 
         long totalTimeBackwards = 0;
         long totalTimeForwards = 0;
@@ -241,6 +243,12 @@ public class Main {
                 relativeTimeBackwards = System.currentTimeMillis() - relativeStartTime;
                 totalTimeBackwards += relativeTimeBackwards;
 
+                if (visitedStates == prevNumStatesBackward) {
+                    sameNumStatesCnt++;
+                } else {
+                    prevNumStatesBackward = visitedStates;
+                }
+
                 if (debug) {
                     System.out.print("visited " + visitedStates + " states. ");
                     System.out.println("Total time backwards: " + totalTimeBackwards + " Relative time: " + relativeTimeBackwards);
@@ -251,7 +259,7 @@ public class Main {
                 }
             }
 
-            if (relativeTimeForwards < relativeTimeBackwards) {
+            if (relativeTimeForwards < relativeTimeBackwards || sameNumStatesCnt >= 5) {
                 nextToGo = FORWARD;
             } else {
                 nextToGo = BACKWARD;
@@ -400,23 +408,30 @@ public class Main {
 
     public static boolean investigatePath(BoardStateLight board, String path, boolean displaySteps) {
         if (path == null) { return false; }
+        String pathTaken = "";
         for (char ch : path.toCharArray()) {
+            boolean success = false;
             switch (ch) {
                 case 'U':
-                    board.performMove(BoardState.UP);
+                    success = board.performMove(BoardState.UP);
                     break;
                 case 'R':
-                    board.performMove(BoardState.RIGHT);
+                    success = board.performMove(BoardState.RIGHT);
                     break;
                 case 'D':
-                    board.performMove(BoardState.DOWN);
+                    success = board.performMove(BoardState.DOWN);
                     break;
                 case 'L':
-                    board.performMove(BoardState.LEFT);
+                    success = board.performMove(BoardState.LEFT);
                     break;
                 default:
                     throw new RuntimeException("Invalid move: " + ch);
             }
+//            if (displaySteps && !success) {
+//                System.out.println(pathTaken);
+//                return false;
+//            }
+            pathTaken += "" + ch;
             if (displaySteps) {
                 System.out.println(board);
                 try {
