@@ -821,7 +821,7 @@ Analyzer.prototype.printMeasurementMatrix = function(meassures) {
     return;
   }
 
-  process.stdout.write(new Array(descWidth).join(' '))
+  process.stdout.write(new Array(descWidth).join(' '));
   meassures.forEach(function(m) {
     process.stdout.write(m.title + new Array(dataWidth - m.title.length).join(' '));
   });
@@ -961,7 +961,23 @@ function createDir(dir, cb) {
 
 function compile(cb) {
   var src = path.normalize('src/');
-  execute('Compiling', 'javac ' + src + 'Main.java ' + src + 'BoardState.java ' + src + 'BoardStateBackwards.java ' + src + 'BoardUtilBackwards.java ' + src + 'BoardUtil.java ' + src + 'BoardLightUtil.java ' + src + 'BoardStateLight.java ' + src + 'Info.java -d temp/out.sokoban -encoding UTF-8', cb);
+
+  fs.readdir(src, function(err, files) {
+    if (err) {
+      cb(err);
+      return;
+    }
+
+    var javaFiles = files.filter(function(element) {
+      return element.match(/.java$/);
+    }).map(function(element) {
+      return src + element;
+    });
+
+    var filesString = javaFiles.join(' ');
+
+    execute('Compiling', 'javac ' + filesString + ' -d temp/out.sokoban -encoding UTF-8', cb);
+  });
 }
 
 function test(map, timeout, cb) {
