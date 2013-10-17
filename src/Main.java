@@ -109,7 +109,7 @@ public class Main {
             if (path == null) {
                 if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
                 //                boardBackward.clearCache();
-                boardBackward.analyzeBoard(false);
+//                boardBackward.analyzeBoard(false);
                 //                boardBackward.initializeBoxToGoalMapping();
                 path = idAStarBackwards(boardBackward);
             } else {
@@ -187,12 +187,12 @@ public class Main {
 
     public static String idAStarBi(BoardState boardForwards, BoardStateBackwards boardBackwards) {
         res = null;
-        boolean done;
+        boolean done = false;
         int startValueForwards = boardForwards.getBoardValue();
-        int startValueBackwards = boardBackwards.getBoardValue();
+//        int startValueBackwards = boardBackwards.getBoardValue();
         int depthIncreaser = 2;
         int maxForwardsDepthValue = startValueForwards;
-        int maxBackwardsDepthValue = startValueBackwards;
+        int maxBackwardsDepthValueIncreaser = 0;
 
         long prevNumStatesBackward = -1;
         int sameNumStatesCnt = 0;
@@ -213,6 +213,7 @@ public class Main {
 
                 long relativeStartTime = System.currentTimeMillis();
 
+
                 done = dfs(boardForwards, 0, maxForwardsDepthValue, false, false, System.currentTimeMillis() + maximumRunningTimeDFS);
 
                 relativeTimeForwards = System.currentTimeMillis() - relativeStartTime;
@@ -231,15 +232,20 @@ public class Main {
 
             if ((nextToGo & BACKWARD) == BACKWARD) {
 
-                maxBackwardsDepthValue += depthIncreaser;
+                maxBackwardsDepthValueIncreaser += depthIncreaser;
 
                 visitedStates = 0;
-                if (debug) { System.out.print("Trying maxValue using Backwards " + maxBackwardsDepthValue + "... "); }
+                if (debug) { System.out.print("Trying maxValue using Backwards " + maxBackwardsDepthValueIncreaser + "... "); }
 
                 long relativeStartTime = System.currentTimeMillis();
 
-                done = dfsBackwards(boardBackwards, 0, maxBackwardsDepthValue, false, System.currentTimeMillis() + maximumRunningTimeDFS);
-
+                for(int possibleStartingPosIndex = 0; !done && possibleStartingPosIndex < boardBackwards.getPossibleStartingPos().size(); possibleStartingPosIndex++){
+                    boardBackwards.updateInitialStartingPos(possibleStartingPosIndex);
+                    int initialBoardValue = boardBackwards.getBoardValue();
+//                    System.out.println("Value for "+ possibleStartingPosIndex + " " + initialBoardValue);
+                    int maxValue = maxBackwardsDepthValueIncreaser + initialBoardValue;
+                    done = dfsBackwards(boardBackwards, 0, maxValue, false, System.currentTimeMillis() + maximumRunningTimeDFS);
+                }
                 relativeTimeBackwards = System.currentTimeMillis() - relativeStartTime;
                 totalTimeBackwards += relativeTimeBackwards;
 
@@ -369,7 +375,7 @@ public class Main {
             System.out.println(board);
             System.out.println("Board value: " + board.getBoardValue());
             try {
-                Thread.sleep(1000);
+                Thread.sleep(100);
             }
             catch (InterruptedException e) {
 

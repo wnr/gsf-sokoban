@@ -72,11 +72,12 @@ public class BoardStateBackwards {
     private boolean[]  trappingCells;
     private int[]      matchedGoal;
     private int[]      matchedBox;
+
     private int[]      possibleBoxJumpMoves;
     private int[]      initialPossibleJumpPositions;
     private int[]      tunnels;
-    private int[]      goalsInPrioOrder;
-    private int[]      prioForGoal;
+    private int[]  goalsInPrioOrder;
+    private int[]  prioForGoal;
     private int        movedBoxesCnt;
     private int[][]    goalSideDist;
     private int[]      boxReachableSideIndex;
@@ -98,6 +99,13 @@ public class BoardStateBackwards {
 
 
     int mostUpLeftPos;
+    private ArrayList<Integer> possibleStartingPos;
+
+    private ArrayList<int[]> possibleGoalsInPrioOrder;
+    private ArrayList<int[]> possiblePrioForGoal;
+    private ArrayList<int[]> possibleMatchedGoal;
+    private ArrayList<int[]> possibleMatchedBox;
+    private ArrayList<int[]>     possibleCurrentReachableBoxDir;
 
     public BoardStateBackwards(List<String> lines) {
         height = lines.size();
@@ -117,6 +125,7 @@ public class BoardStateBackwards {
                 board[row * width + col] = characterMapping.get(cell);
                 if (isPlayer(row * width + col) || cell == PLAYER_ON_GOAL_CHAR) {
                     playerPos = row * width + col;
+                    movePlayer(playerPos);
                 }
                 if (isGoal(row * width + col)) {
                     tempGoalCells.add(row * width + col);
@@ -190,7 +199,6 @@ public class BoardStateBackwards {
             int dir = directionLastMove();
             lastMovedBoxPos = playerPos + dx[dir];
             lastMovedBoxIndex = getBoxNumber(lastMovedBoxPos);
-
             updateMatchingForBox(lastMovedBoxIndex);
         }
 
@@ -214,7 +222,7 @@ public class BoardStateBackwards {
             int goal = goalsInPrioOrder[i];
             int box = matchedBox[goal];
             int boxPos = boxCells[box];
-            if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && getGoalSideDistValue(boxCells[lastMovedBoxIndex], matchedGoal[lastMovedBoxIndex]) != 0) {
+            if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && getMinimumGoalSideDistValue(boxCells[lastMovedBoxIndex], matchedGoal[lastMovedBoxIndex]) != 0) {
                 continue;
             }
 
@@ -224,7 +232,7 @@ public class BoardStateBackwards {
                 if (isFree(newPos)) {
                     int newPos2 = newPos + dx[dir];
                     if (isFree(newPos2)) {
-                        if ((1 == boardSections[newPos] && playerPos != newPos) || previousMove == null) {
+                        if ((1 == boardSections[newPos] && playerPos != newPos)) {
                             boxMoves.add(dir | boxPos << 2);
                         }
                     }
@@ -271,6 +279,17 @@ public class BoardStateBackwards {
                     mostUpLeftPos = newPos;
                 }
                 analyzeBoardDfs(newPos, boardSections);
+            }
+        }
+    }
+
+    private void analyzeBoardDfsSimple(int pos, int[] boardSections) {
+        boardSections[pos] = 1;
+        for (int dir = 0; dir < 4; dir++) {
+            int newPos = pos + dx[dir];
+            if (isFree(newPos) && boardSections[newPos] == 0) {
+
+                analyzeBoardDfsSimple(newPos, boardSections);
             }
         }
     }
@@ -351,8 +370,63 @@ public class BoardStateBackwards {
         }
 
         computeTunnels();
-        initializeBoxToGoalMapping();
-        analyzeBoard(false);
+
+
+        possibleStartingPos = new ArrayList<Integer>();
+        possiblePrioForGoal = new ArrayList<int[]>();
+        possibleGoalsInPrioOrder = new ArrayList<int[]>();
+        possibleMatchedBox = new ArrayList<int[]>();
+        possibleMatchedGoal = new ArrayList<int[]>();
+        possibleCurrentReachableBoxDir = new ArrayList<int[]>();
+        int[] boardSection = new int[totalSize];
+        ArrayList<Integer> tempPossibleStartingPos = new ArrayList<Integer>();
+        ArrayList<int[]> tempPossibleCurrentReachableBoxDir = new ArrayList<int[]>();
+        for (int i = 0; i < totalSize; i++) {
+            if (isFree(i) && boardSection[i] == 0) {
+                analyzeBoardDfsSimple(i, boardSection);
+                tempPossibleStartingPos.add(i);
+                boolean[] visited = new boolean[totalSize];
+                int[] tmpCurrentReachableBoxDir = new int[boxCnt];
+                analyzeCurrentBoxDirDFS(i, visited, tmpCurrentReachableBoxDir);
+                tempPossibleCurrentReachableBoxDir.add(tmpCurrentReachableBoxDir);
+            }
+        }
+        for (int i = 0; i < tempPossibleStartingPos.size(); i++) {
+            int tempStartingPos = tempPossibleStartingPos.get(i);
+            movePlayer(tempStartingPos);
+            try {
+                currentReachableBoxDir = tempPossibleCurrentReachableBoxDir.get(i);
+                initializeBoxToGoalMapping();
+                if(getBoardValue() < INF){
+                possibleStartingPos.add(tempStartingPos);
+                possibleGoalsInPrioOrder.add(goalsInPrioOrder);
+                possiblePrioForGoal.add(prioForGoal);
+                possibleMatchedGoal.add(matchedGoal);
+                possibleMatchedBox.add(matchedBox);
+                possibleCurrentReachableBoxDir.add(tempPossibleCurrentReachableBoxDir.get(i));
+                }
+            }
+            catch (ArrayIndexOutOfBoundsException e) {
+
+            }
+        }
+
+
+        //        analyzeBoard(false);
+    }
+
+    private void analyzeCurrentBoxDirDFS(int pos, boolean[] visited, int[] tmpCurrentReachableBoxDir) {
+        visited[pos] = true;
+        for(int dir = 0; dir < 4; dir++){
+            int newPos = pos + dx[dir];
+            if(!isWall(newPos) && !visited[newPos]){
+                analyzeCurrentBoxDirDFS(newPos, visited, tmpCurrentReachableBoxDir);
+                if(isBox(newPos)){
+                    int boxIndex = getBoxNumber(newPos);
+                    tmpCurrentReachableBoxDir[boxIndex] = getOppositeDirection(dir);
+                }
+            }
+        }
     }
 
     private int getGoalSideDistValue(int pos, int dir, int goal) {
@@ -536,9 +610,9 @@ public class BoardStateBackwards {
             double distSum = 0;
             int distCnt = 0;
             for (int box = 0; box < boxCnt; box++) {
-                if (getMinimumGoalSideDistValue(boxCells[box], goal) < INF) {
+                if (getGoalSideDistValue(boxCells[box], goal) < INF) {
                     distCnt++;
-                    distSum += getMinimumGoalSideDistValue(boxCells[box], goal);
+                    distSum += getGoalSideDistValue(boxCells[box], goal);
                 }
             }
             goalsWithLeastCost.add(new int[]{ goal, (int) (distSum / distCnt + 0.5) });
@@ -556,12 +630,12 @@ public class BoardStateBackwards {
             int bestBox = -1;
             for (int box = 0; box < boxCnt; box++) {
                 if (matchedGoal[box] == -1) {
-                    if (bestBox == -1 || getMinimumGoalSideDistValue(boxCells[box], goal) < getMinimumGoalSideDistValue(boxCells[bestBox], goal)) {
+                    if (bestBox == -1 || getGoalSideDistValue(boxCells[box], goal) < getGoalSideDistValue(boxCells[bestBox], goal)) {
                         bestBox = box;
                     }
                 }
             }
-            if (getMinimumGoalSideDistValue(boxCells[bestBox], goal) < INF) {
+            if (getGoalSideDistValue(boxCells[bestBox], goal) < INF) {
                 matchedGoal[bestBox] = goal;
                 matchedBox[goal] = bestBox;
             }
@@ -573,7 +647,7 @@ public class BoardStateBackwards {
             if (matchedGoal[box] == -1) {
                 Arrays.fill(visited, false);
                 for (int goal = 0; goal < goalCnt; goal++) {
-                    if (getMinimumGoalSideDistValue(boxPos, goal) < INF) {
+                    if (getGoalSideDistValue(boxPos, goal) < INF) {
                         if (match(goal, visited)) {
                             matchedGoal[box] = goal;
                             matchedBox[goal] = box;
@@ -585,7 +659,7 @@ public class BoardStateBackwards {
         }
 
         for (int box = 0; box < boxCnt; box++) {
-            initialUpdateMatchingForBox(box);
+            updateMatchingForBox(box);
         }
     }
 
@@ -629,7 +703,7 @@ public class BoardStateBackwards {
         int matchingBox = matchedBox[goal];
         int boxPos = boxCells[matchingBox];
         for (int newGoal = 0; newGoal < goalCnt; newGoal++) {
-            if (getMinimumGoalSideDistValue(boxPos, newGoal) < INF) {
+            if (getGoalSideDistValue(boxPos, newGoal) < INF) {
                 if (match(newGoal, visited)) {
                     matchedBox[newGoal] = matchingBox;
                     matchedGoal[matchingBox] = newGoal;
@@ -702,6 +776,7 @@ public class BoardStateBackwards {
         currentReachableBoxDir[getBoxNumber(prevBoxPos)] = dir;
         movedBoxesCnt--;
         previousMove = nextPrev;
+        updateMatchingForBox(getBoxNumber(prevBoxPos));
         return true;
     }
 
@@ -954,6 +1029,7 @@ public class BoardStateBackwards {
                     }
                 }
             }
+            if (pathWithForwards != null) { return true; }
         }
         return good;
     }
@@ -1047,6 +1123,19 @@ public class BoardStateBackwards {
 
     public int getPosFromPlayerInDirection(int dir) {
         return playerPos + dx[dir];
+    }
+
+    public ArrayList<Integer> getPossibleStartingPos() {
+        return possibleStartingPos;
+    }
+
+    public void updateInitialStartingPos(int startingPosIndex) {
+        movePlayer(possibleStartingPos.get(startingPosIndex));
+        goalsInPrioOrder = possibleGoalsInPrioOrder.get(startingPosIndex);
+        prioForGoal = possiblePrioForGoal.get(startingPosIndex);
+        matchedGoal = possibleMatchedGoal.get(startingPosIndex);
+        matchedBox = possibleMatchedBox.get(startingPosIndex);
+        currentReachableBoxDir = possibleCurrentReachableBoxDir.get(startingPosIndex);
     }
 
     static class StackEntry {
