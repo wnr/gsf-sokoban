@@ -8,6 +8,9 @@ public class Main {
     public static final int BACKWARD = 2;
     public static final int BI_DIR   = 3;
 
+    public static final long MAX_RUNNING_TIME_DFS = 1000;
+    public static final int MAX_VALUE_INCREASER = 2;
+
     public static boolean debug              = false;
     public static boolean printPath          = false;
     public static int     forwardOrBackwards = BI_DIR;
@@ -194,34 +197,29 @@ public class Main {
         boolean done = false;
         int startValueForwards = boardForwards.getBoardValue();
 //        int startValueBackwards = boardBackwards.getBoardValue();
-        int depthIncreaser = 2;
         int maxForwardsDepthValue = startValueForwards;
         int maxBackwardsDepthValueIncreaser = 0;
-
-        long prevNumStatesBackward = -1;
-        int sameNumStatesCnt = 0;
 
         long totalTimeBackwards = 0;
         long totalTimeForwards = 0;
         long relativeTimeForwards = 0;
         long relativeTimeBackwards = 0;
-        long maximumRunningTimeDFS = 5500;
 
         int nextToGo = BI_DIR;
         while(true){
             if ((nextToGo & FORWARD) == FORWARD) {
 
-                maxForwardsDepthValue += depthIncreaser;
                 visitedStates = 0;
                 if (debug) { System.out.print("Trying maxValue using Forwards " + maxForwardsDepthValue + "... "); }
 
                 long relativeStartTime = System.currentTimeMillis();
 
-
-                done = dfs(boardForwards, 0, maxForwardsDepthValue, false, false, System.currentTimeMillis() + maximumRunningTimeDFS);
+                done = dfs(boardForwards, 0, maxForwardsDepthValue, false, false, System.currentTimeMillis() + MAX_RUNNING_TIME_DFS);
 
                 relativeTimeForwards = System.currentTimeMillis() - relativeStartTime;
                 totalTimeForwards += relativeTimeForwards;
+
+                maxForwardsDepthValue += MAX_VALUE_INCREASER;
 
                 if (debug) {
                     System.out.print("visited " + visitedStates + " states. ");
@@ -236,8 +234,6 @@ public class Main {
 
             if ((nextToGo & BACKWARD) == BACKWARD) {
 
-                maxBackwardsDepthValueIncreaser += depthIncreaser;
-
                 visitedStates = 0;
                 if (debug) { System.out.print("Trying maxValue using Backwards " + maxBackwardsDepthValueIncreaser + "... "); }
 
@@ -249,16 +245,12 @@ public class Main {
                     int initialBoardValue = boardBackwards.getBoardValue();
 //                    System.out.println("Value for "+ possibleStartingPosIndex + " " + initialBoardValue);
                     int maxValue = maxBackwardsDepthValueIncreaser + initialBoardValue;
-                    done = dfsBackwards(boardBackwards, 0, maxValue, false, System.currentTimeMillis() + maximumRunningTimeDFS);
+                    done = dfsBackwards(boardBackwards, 0, maxValue, false, relativeStartTime + MAX_RUNNING_TIME_DFS);
                 }
                 relativeTimeBackwards = System.currentTimeMillis() - relativeStartTime;
                 totalTimeBackwards += relativeTimeBackwards;
 
-                if (visitedStates == prevNumStatesBackward) {
-                    sameNumStatesCnt++;
-                } else {
-                    prevNumStatesBackward = visitedStates;
-                }
+                maxBackwardsDepthValueIncreaser += MAX_VALUE_INCREASER;
 
                 if (debug) {
                     System.out.print("visited " + visitedStates + " states. ");
@@ -270,10 +262,28 @@ public class Main {
                 }
             }
 
-            if (relativeTimeForwards < relativeTimeBackwards || sameNumStatesCnt >= 5) {
+//            MAX_RUNNING_TIME_DFS = 200000;
+
+            // Update next one to run
+            if (relativeTimeForwards > MAX_RUNNING_TIME_DFS) {
+                if (relativeTimeBackwards > MAX_RUNNING_TIME_DFS) {
+                    if (nextToGo == FORWARD) {
+                        nextToGo = BACKWARD;
+                    } else {
+                        nextToGo = FORWARD;
+                    }
+                } else {
+                    nextToGo = BACKWARD;
+                }
+            } else if (relativeTimeBackwards > MAX_RUNNING_TIME_DFS) {
                 nextToGo = FORWARD;
             } else {
-                nextToGo = BACKWARD;
+                // Noone did over time limit
+                if (relativeTimeForwards <= relativeTimeBackwards) {
+                    nextToGo = FORWARD;
+                } else {
+                    nextToGo = BACKWARD;
+                }
             }
         }
     }

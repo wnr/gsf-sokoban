@@ -832,7 +832,7 @@ public class BoardStateBackwards {
         if (previousMove == null) { return -1; }
         return (previousMove.val >>> 2) & ((1 << 15) -1);
     }
-    public int boxPosLastMove(int previousMoveVal){
+    public static int boxPosLastMove(int previousMoveVal){
         if (previousMoveVal == -1) { return -1; }
         return (previousMoveVal >>> 2) & ((1 << 15) -1);
     }

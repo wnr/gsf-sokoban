@@ -1191,7 +1191,7 @@ public class BoardState {
                     int[] backwardsHashKey = boardStateBackwards.getGameStateHash().get(hashCode);
 
                     int backwardsPathPrevBoxMove = backwardsHashKey[2];
-                    int backwardsBoxPos = backwardsPathPrevBoxMove >>> 2;
+                    int backwardsBoxPos = BoardStateBackwards.boxPosLastMove(backwardsPathPrevBoxMove);
                     int backwardsDir = backwardsPathPrevBoxMove & 3;
                     int backwardsPlayerPos = backwardsBoxPos + dx[backwardsDir] * 2;
 
