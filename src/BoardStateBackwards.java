@@ -67,15 +67,15 @@ public class BoardStateBackwards {
     private int[]      matchedGoal;
     private int[]      matchedBox;
 
-    private int[]      possibleBoxJumpMoves;
-    private int[]      initialPossibleJumpPositions;
-    private int[]      tunnels;
-    private int[]  goalsInPrioOrder;
-    private int[]  prioForGoal;
-    private int        movedBoxesCnt;
-    private int[][]    goalSideDist;
-    private int[]      boxReachableSideIndex;
-    private int[]      currentReachableBoxDir;
+    private int[]   possibleBoxJumpMoves;
+    private int[]   initialPossibleJumpPositions;
+    private int[]   tunnels;
+    private int[]   goalsInPrioOrder;
+    private int[]   prioForGoal;
+    private int     movedBoxesCnt;
+    private int[][] goalSideDist;
+    private int[]   boxReachableSideIndex;
+    private int[]   currentReachableBoxDir;
 
     private double boardDensity;
 
@@ -99,9 +99,9 @@ public class BoardStateBackwards {
     private ArrayList<int[]> possiblePrioForGoal;
     private ArrayList<int[]> possibleMatchedGoal;
     private ArrayList<int[]> possibleMatchedBox;
-    private ArrayList<int[]>     possibleCurrentReachableBoxDir;
+    private ArrayList<int[]> possibleCurrentReachableBoxDir;
 
-    public int pathFromHashCnt = 0;
+    public int pathFromHashCnt        = 0;
     public int pathFromHashSuccessCnt = 0;
 
     public BoardStateBackwards(List<String> lines) {
@@ -194,8 +194,46 @@ public class BoardStateBackwards {
         int lastMovedBoxPos = -1;
         if (movedBoxLastMove()) {
             int dir = directionLastMove();
-            lastMovedBoxPos = playerPos + dx[dir];
+            lastMovedBoxPos = playerPos + dx[getOppositeDirection(dir)];
             lastMovedBoxIndex = getBoxNumber(lastMovedBoxPos);
+
+            updateMatchingForBox(lastMovedBoxIndex, lastMovedBoxPos);
+
+            boolean infBoardValue = false;
+            for (int box = 0; box < boxCnt; box++) {
+                int goal = matchedGoal[box];
+                int boxPos = boxCells[box];
+
+                if (getGoalSideDistValue(boxPos, goal) >= INF) {
+
+                    infBoardValue = true;
+                    break;
+                }
+            }
+
+            if (infBoardValue) {
+                LinkedList<int[]> oldMatchedPairs = new LinkedList<int[]>();
+                for (int box = 0; box < boxCnt; box++) {
+                    int goal = matchedGoal[box];
+                    int boxPos = boxCells[box];
+                    oldMatchedPairs.add(new int[]{ box, goal });
+
+                    if (getGoalSideDistValue(boxPos, goal) >= INF) {
+
+                        matchedGoal[box] = -1;
+                        matchedBox[goal] = -1;
+                    }
+                }
+
+                if (oldMatchedPairs.size() > 0) {
+                    if (!updateMatchingForUnmatchedBoxes()) {
+                        for (int[] pair : oldMatchedPairs) {
+                            matchedGoal[pair[0]] = pair[1];
+                            matchedBox[pair[1]] = pair[0];
+                        }
+                    }
+                }
+            }
         }
 
         playerAndBoxesHashCells[boxCnt] = totalSize + mostUpLeftPos;
@@ -207,9 +245,9 @@ public class BoardStateBackwards {
                 int boxPos = playerPos + dx[getOppositeDirection(dir)];
                 if ((tunnels[boxPos] & TUNNEL) == TUNNEL || tunnels[boxPos] == ROOM) { //TODO: Maybe should pull box out of tunnel
                     if (!isGoal(boxPos)) {
-                        if(isFree(playerPos + dx[dir])){
-                            possibleBoxJumpMoves = new int[] {dir | boxPos << 2};
-                        }else{
+                        if (isFree(playerPos + dx[dir])) {
+                            possibleBoxJumpMoves = new int[]{ dir | boxPos << 2 };
+                        } else {
                             possibleBoxJumpMoves = new int[0];
                         }
                         return;
@@ -221,7 +259,9 @@ public class BoardStateBackwards {
         for (int i = 0; i < goalCnt; i++) {
             int goal = goalsInPrioOrder[i];
             int box = matchedBox[goal];
-            int boxPos = boxCells[box];
+            int boxPos = 0;
+            boxPos = boxCells[box];
+
             if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && getMinimumGoalSideDistValue(boxCells[lastMovedBoxIndex], matchedGoal[lastMovedBoxIndex]) != 0) {
                 continue;
             }
@@ -288,6 +328,37 @@ public class BoardStateBackwards {
             }
         }
     }
+
+//    private void tempChecker() {
+//
+//        int aa = 0;
+//        int bb = 0;
+//        boolean[] matchedB = new boolean[matchedBox.length];
+//        for (int i : matchedBox) {
+//            if (i == -1) {
+//                aa++;
+//            } else {
+//                if (matchedB[i]) {
+//                    throw new RuntimeException();
+//                }
+//                matchedB[i] = true;
+//            }
+//        }
+//        matchedB = new boolean[matchedGoal.length];
+//        for (int j : matchedGoal) {
+//            if (j == -1) {
+//                bb++;
+//            } else {
+//                if (matchedB[j]) {
+//                    throw new RuntimeException();
+//                }
+//                matchedB[j] = true;
+//            }
+//        }
+//        if (aa != bb) {
+//            throw new RuntimeException();
+//        }
+//    }
 
     private void analyzeBoardDfsOneTimeUse(int pos, int[] boardSections) {
         boardSections[pos] = 1;
@@ -393,18 +464,13 @@ public class BoardStateBackwards {
             try {
                 currentReachableBoxDir = tempPossibleCurrentReachableBoxDir.get(i);
                 initializeBoxToGoalMapping();
-                if(getBoardValue() < INF){
-                possibleStartingPos.add(tempStartingPos);
-                possibleGoalsInPrioOrder.add(goalsInPrioOrder);
-                possiblePrioForGoal.add(prioForGoal);
-                possibleMatchedGoal.add(matchedGoal);
-                possibleMatchedBox.add(matchedBox);
-                possibleCurrentReachableBoxDir.add(tempPossibleCurrentReachableBoxDir.get(i));
-//                    System.out.println(Arrays.toString(goalsInPrioOrder));
-//                    System.out.println(Arrays.toString(prioForGoal));
-//                    System.out.println(Arrays.toString(matchedGoal));
-//                    System.out.println(Arrays.toString(matchedBox));
-//                    System.out.println(Arrays.toString(currentReachableBoxDir));
+                if (getBoardValue() < INF) {
+                    possibleStartingPos.add(tempStartingPos);
+                    possibleGoalsInPrioOrder.add(goalsInPrioOrder);
+                    possiblePrioForGoal.add(prioForGoal);
+                    possibleMatchedGoal.add(matchedGoal);
+                    possibleMatchedBox.add(matchedBox);
+                    possibleCurrentReachableBoxDir.add(tempPossibleCurrentReachableBoxDir.get(i));
                 }
             }
             catch (ArrayIndexOutOfBoundsException e) {
@@ -413,16 +479,16 @@ public class BoardStateBackwards {
         }
 
 
-        //        analyzeBoard(false);
+        //                analyzeBoard(false);
     }
 
     private void analyzeCurrentBoxDirDFS(int pos, boolean[] visited, int[] tmpCurrentReachableBoxDir) {
         visited[pos] = true;
-        for(int dir = 0; dir < 4; dir++){
+        for (int dir = 0; dir < 4; dir++) {
             int newPos = pos + dx[dir];
-            if(!isWall(newPos) && !visited[newPos]){
+            if (!isWall(newPos) && !visited[newPos]) {
                 analyzeCurrentBoxDirDFS(newPos, visited, tmpCurrentReachableBoxDir);
-                if(isBox(newPos)){
+                if (isBox(newPos)) {
                     int boxIndex = getBoxNumber(newPos);
                     tmpCurrentReachableBoxDir[boxIndex] = getOppositeDirection(dir);
                 }
@@ -642,29 +708,39 @@ public class BoardStateBackwards {
             }
         }
 
+        updateMatchingForUnmatchedBoxes();
+    }
+
+
+    private boolean updateMatchingForUnmatchedBoxes() {
         boolean[] visited = new boolean[goalCnt];
         for (int box = 0; box < boxCnt; box++) {
             int boxPos = boxCells[box];
             if (matchedGoal[box] == -1) {
                 Arrays.fill(visited, false);
+                boolean good = false;
                 for (int goal = 0; goal < goalCnt; goal++) {
                     if (getGoalSideDistValue(boxPos, goal) < INF) {
                         if (match(goal, visited)) {
+                            good = true;
                             matchedGoal[box] = goal;
                             matchedBox[goal] = box;
                             break;
                         }
                     }
                 }
+                if (!good) {
+                    return false;
+                }
             }
         }
-
         for (int box = 0; box < boxCnt; box++) {
             updateMatchingForBox(box, boxCells[box]);
         }
+        return true;
     }
 
-    private int updateMatchingForBox(int box, int boxPos) {
+    private void updateMatchingForBox(int box, int boxPos) {
         for (int otherBox = 0; otherBox < boxCnt; otherBox++) {
             if (box == otherBox) { continue; }
             int g = matchedGoal[box];
@@ -675,25 +751,8 @@ public class BoardStateBackwards {
             if (newDist < oldDist) {// || newDist == oldDist && prioForGoal[g2] < prioForGoal[g] && goalDist[boxPos][g2] < goalDist[boxPos2][g2]) {
                 matchedGoal[box] = g2;
                 matchedGoal[otherBox] = g;
-                return otherBox;
-            }
-        }
-        return -1;
-    }
-
-
-    private void initialUpdateMatchingForBox(int box) {
-        int boxPos = boxCells[box];
-        for (int otherBox = 0; otherBox < boxCnt; otherBox++) {
-            if (box == otherBox) { continue; }
-            int g = matchedGoal[box];
-            int boxPos2 = boxCells[otherBox];
-            int g2 = matchedGoal[otherBox];
-            int oldDist = getMinimumGoalSideDistValue(boxPos, g) + getMinimumGoalSideDistValue(boxPos2, g2);
-            int newDist = getMinimumGoalSideDistValue(boxPos, g2) + getMinimumGoalSideDistValue(boxPos2, g);
-            if (newDist < oldDist) {// || newDist == oldDist && prioForGoal[g2] < prioForGoal[g] && goalDist[boxPos][g2] < goalDist[boxPos2][g2]) {
-                matchedGoal[box] = g2;
-                matchedGoal[otherBox] = g;
+                matchedBox[g2] = box;
+                matchedBox[g] = otherBox;
             }
         }
     }
@@ -723,16 +782,15 @@ public class BoardStateBackwards {
         int newBoxPos = oldBoxPos + dx[dir];
         int newPlayerPos = newBoxPos + dx[dir];
 
-        if (!isBox(oldBoxPos)) {
-            throw new RuntimeException("Should be a box position");
-        }
+        //        if (!isBox(oldBoxPos)) {
+        //            throw new RuntimeException("Should be a box position");
+        //        }
         moveBox(oldBoxPos, newBoxPos);
         movedBoxesCnt++;
         currentReachableBoxDir[getBoxNumber(newBoxPos)] = dir;
         movePlayer(newPlayerPos);
 
-        int matchSwitchBox = updateMatchingForBox(getBoxNumber(newBoxPos), newBoxPos);
-        previousMove = new StackEntry(dir | oldBoxPos << 2 | matchSwitchBox << 17, previousMove);
+        previousMove = new StackEntry(boxMove, previousMove);
 
         return true;
     }
@@ -763,13 +821,13 @@ public class BoardStateBackwards {
      */
     public boolean reverseMove() {
         if (previousMove == null) { return false; }
-        int prevBoxPos = (previousMove.val >>> 2) & ((1 << 15) -1);
+        int prevBoxPos = (previousMove.val >>> 2) & ((1 << 15) - 1);
         int dir = previousMove.val & 3;
         int currentBoxPos = prevBoxPos + dx[dir];
 
         StackEntry nextPrev = previousMove.prev;
         if (nextPrev != null) {
-            int nextPrevBoxPos = (nextPrev.val >>> 2) & ((1 << 15) -1);
+            int nextPrevBoxPos = (nextPrev.val >>> 2) & ((1 << 15) - 1);
             int nextPrevDir = nextPrev.val & 3;
             int prevPlayerPos = nextPrevBoxPos + dx[nextPrevDir] + dx[nextPrevDir];
             movePlayer(prevPlayerPos);
@@ -780,14 +838,6 @@ public class BoardStateBackwards {
 
         currentReachableBoxDir[getBoxNumber(prevBoxPos)] = dir;
         movedBoxesCnt--;
-        int switchedBoxIndex = previousMove.val >> 17;
-        if(switchedBoxIndex != -1){
-            int movedBoxIndex = getBoxNumber(prevBoxPos);
-            int g = matchedGoal[movedBoxIndex];
-            int g2 = matchedGoal[switchedBoxIndex];
-            matchedGoal[movedBoxIndex] = g2;
-            matchedGoal[switchedBoxIndex] = g;
-        }
         previousMove = nextPrev;
         return true;
     }
@@ -817,13 +867,14 @@ public class BoardStateBackwards {
         return true;
     }
 
-    public int boxPosLastMove(){
+    public int boxPosLastMove() {
         if (previousMove == null) { return -1; }
-        return (previousMove.val >>> 2) & ((1 << 15) -1);
+        return (previousMove.val >>> 2) & ((1 << 15) - 1);
     }
-    public static int boxPosLastMove(int previousMoveVal){
+
+    public static int boxPosLastMove(int previousMoveVal) {
         if (previousMoveVal == -1) { return -1; }
-        return (previousMoveVal >>> 2) & ((1 << 15) -1);
+        return (previousMoveVal >>> 2) & ((1 << 15) - 1);
     }
 
     /*
@@ -838,7 +889,7 @@ public class BoardStateBackwards {
             sb.append(firstJumpMoves);
         }
         while (previousMove != null) {
-            int prevBoxPos =boxPosLastMove();
+            int prevBoxPos = boxPosLastMove();
             int prevDir = directionLastMove();
             sb.append(directionCharacters[getOppositeDirection(prevDir)]);
 
@@ -1031,7 +1082,7 @@ public class BoardStateBackwards {
                     int[] forwardHashKey = boardStateForwards.getGameStateHash().get(hashCode);
 
                     int forwardPathPrevBoxMove = forwardHashKey[2];
-                    int forwardBoxPos = forwardPathPrevBoxMove >>> 2;
+                    int forwardBoxPos = boxPosLastMove(forwardPathPrevBoxMove);
                     int forwardDir = forwardPathPrevBoxMove & 3;
                     int forwardPlayerPos = forwardBoxPos;
 
@@ -1160,14 +1211,6 @@ public class BoardStateBackwards {
         matchedGoal = possibleMatchedGoal.get(startingPosIndex);
         matchedBox = possibleMatchedBox.get(startingPosIndex);
         currentReachableBoxDir = possibleCurrentReachableBoxDir.get(startingPosIndex);
-//        System.out.println();
-//        System.out.println(possibleStartingPos.get(startingPosIndex));
-//        System.out.println(Arrays.toString(possibleGoalsInPrioOrder.get(startingPosIndex)));
-//        System.out.println(Arrays.toString(possiblePrioForGoal.get(startingPosIndex)));
-//        System.out.println(Arrays.toString(possibleMatchedGoal.get(startingPosIndex)));
-//        System.out.println(Arrays.toString(possibleMatchedBox.get(startingPosIndex)));
-//        System.out.println(Arrays.toString(possibleCurrentReachableBoxDir.get(startingPosIndex)));
-
     }
 
     static class StackEntry {
