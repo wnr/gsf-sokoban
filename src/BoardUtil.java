@@ -8,13 +8,10 @@ public class BoardUtil {
 
     private static ArrayList<ArrayList<String>> cachedBoards;
 
-    public static int[] shuffleListToArray(List<Integer> list, int shuffle) {
-        int[] array = new int[list.size()];
-        int i = 0;
-        
-        for (int element : list) {
-            array[i++] = element;
-        }
+    public static int[] shuffleListToArray(int[] list, int movesCount, int shuffle) {
+        int[] array = new int[movesCount];
+
+        System.arraycopy(list,0, array, 0, movesCount);
 
         if(array.length < 2) {
             return array;
@@ -28,11 +25,10 @@ public class BoardUtil {
 
             while((i2 = generator.nextInt(array.length)) == i1);
 
-            int v1 = array[i1];
-            int v2 = array[i2];
+            int tmp = array[i1];
+            array[i1] = array[i2];
+            array[i2] = tmp;
 
-            array[i2] = v1;
-            array[i1] = v2;
         }
 
         return array;

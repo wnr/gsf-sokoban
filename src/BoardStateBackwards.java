@@ -104,6 +104,10 @@ public class BoardStateBackwards {
     public int pathFromHashCnt        = 0;
     public int pathFromHashSuccessCnt = 0;
 
+
+    int[] tempPossibleMoves;
+
+
     public BoardStateBackwards(List<String> lines) {
         height = lines.size();
         width = 0;
@@ -138,6 +142,7 @@ public class BoardStateBackwards {
             row++;
         }
 
+        tempPossibleMoves = new int[boxCnt*4];
 
         startingPlayerPos = playerPos;
         mostUpLeftPos = playerPos;
@@ -255,7 +260,7 @@ public class BoardStateBackwards {
                 }
             }
         }
-        LinkedList<Integer> boxMoves = new LinkedList<Integer>();
+        int movesCount = 0;
         for (int i = 0; i < goalCnt; i++) {
             int goal = goalsInPrioOrder[i];
             int box = matchedBox[goal];
@@ -273,14 +278,14 @@ public class BoardStateBackwards {
                     int newPos2 = newPos + dx[dir];
                     if (isFree(newPos2)) {
                         if (1 == boardSections[newPos]) {
-                            boxMoves.add(dir | boxPos << 2);
+                            tempPossibleMoves[movesCount++] = dir | boxPos << 2;
                         }
                     }
                 }
             }
         }
 
-        possibleBoxJumpMoves = BoardUtil.shuffleListToArray(boxMoves, Main.NUM_SHUFFLING);
+        possibleBoxJumpMoves = BoardUtil.shuffleListToArray(tempPossibleMoves, movesCount, Main.NUM_SHUFFLING);
     }
 
     private void locateBoxes() {

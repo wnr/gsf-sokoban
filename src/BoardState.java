@@ -94,6 +94,8 @@ public class BoardState {
     public int pathFromHashCnt        = 0;
     public int pathFromHashSuccessCnt = 0;
 
+    int[] tempPossibleMoves;
+
     public BoardState(List<String> lines) {
         height = lines.size();
         width = 0;
@@ -127,6 +129,7 @@ public class BoardState {
             }
             row++;
         }
+        tempPossibleMoves = new int[boxCnt*4];
 
         boolean[] visited = new boolean[totalSize];
         setOutsideSpaceDFS(playerPos, visited);
@@ -234,10 +237,10 @@ public class BoardState {
                 }
             }
         }
-        LinkedList<Integer> moves = new LinkedList<Integer>();
         //        if (onlyPushBox == -1 && lastMovedBoxPos != -1) {
         //            addMovesForBox(lastMovedBoxPos, boardSections, moves);
         //        }
+        int movesCount = 0;
         for (int i = 0; i < goalCnt; i++) {
             int goal = goalsInPrioOrder[i];
             int box = matchedBox[goal];
@@ -247,10 +250,29 @@ public class BoardState {
             if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && getGoalSideDistValue(boxCells[lastMovedBoxIndex], matchedGoal[lastMovedBoxIndex]) != 0) {
                 continue;
             }
-            addMovesForBox(boxPos, boardSections, moves);
+            for (int dir = 0; dir < 2; dir++) {
+                int newPos = boxPos + dx[dir];
+                if (isFree(newPos)) {
+                    int newPos2 = boxPos + dx[dir + 2];
+                    if (isFree(newPos2)) {
+                        if (boardSections[newPos] == 1) {
+                            int move = (boxPos << 2) + dir + 2;
+                            if (isGoodMove(move)) {
+                                tempPossibleMoves[movesCount++] = move;
+                            }
+                        }
+                        if (boardSections[newPos2] == 1) {
+                            int move = (boxPos << 2) + dir;
+                            if (isGoodMove(move)) {
+                                tempPossibleMoves[movesCount++] = move;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        possibleBoxMoves = BoardUtil.shuffleListToArray(moves, Main.NUM_SHUFFLING);
+        possibleBoxMoves = BoardUtil.shuffleListToArray(tempPossibleMoves, movesCount, Main.NUM_SHUFFLING);
     }
 
     private void shuffleBoxMoves(List<Integer> moves) {
@@ -260,29 +282,6 @@ public class BoardState {
         int i = 0;
         for (int move : moves) {
             possibleBoxMoves[i++] = move;
-        }
-    }
-
-    private void addMovesForBox(int boxPos, int[] boardSections, LinkedList<Integer> moves) {
-        for (int dir = 0; dir < 2; dir++) {
-            int newPos = boxPos + dx[dir];
-            if (isFree(newPos)) {
-                int newPos2 = boxPos + dx[dir + 2];
-                if (isFree(newPos2)) {
-                    if (boardSections[newPos] == 1) {
-                        int move = (boxPos << 2) + dir + 2;
-                        if (isGoodMove(move)) {
-                            moves.add(move);
-                        }
-                    }
-                    if (boardSections[newPos2] == 1) {
-                        int move = (boxPos << 2) + dir;
-                        if (isGoodMove(move)) {
-                            moves.add(move);
-                        }
-                    }
-                }
-            }
         }
     }
 
