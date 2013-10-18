@@ -120,12 +120,12 @@ removeDir('temp', function(err) {
                   tester.printVisual();
                   tester.printExceptions();
 
-                  var analyzer = new Analyzer(tester.exceptions.concat(tester.passed), config.cores);
+                  /*var analyzer = new Analyzer(tester.exceptions.concat(tester.passed), config.cores);
                   analyzer.run(function done(err) {
                     if (err) throw err;
 
                     analyzer.printResults();
-                  });
+                  });*/
                 });
               });
             }

@@ -119,7 +119,7 @@ public class Main {
             boardBackward.setBoardStateForwards(boardForward);
             boardForward.setBoardStateBackwards(boardBackward);
             if (debug) {System.out.println("Using Forward AND Backwards algorithms");}
-            path = aggressiveSearch(boardForward);
+//            path = aggressiveSearch(boardForward);
             if (path == null) {
                 if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
                 boardForward.clearCache();
@@ -201,10 +201,10 @@ public class Main {
         long totalTimeForwards = 0;
         long relativeTimeForwards = 0;
         long relativeTimeBackwards = 0;
-        long maximumRunningTimeDFS = 200000;
+        long maximumRunningTimeDFS = 2000000;
 
-        int nextToGo = BI_DIR;
-        while (true) {
+        int nextToGo = BACKWARD;
+        while(true){
             if ((nextToGo & FORWARD) == FORWARD) {
 
                 maxForwardsDepthValue += depthIncreaser;
@@ -370,7 +370,6 @@ public class Main {
         }
         int[] possibleBoxMoves = board.getPossibleBoxJumpMoves();
         if (possibleBoxMoves == null) { return false; }
-        if (board.getBoardValue() > maxValue) { return false; }
 
         if (printPath) {
             System.out.println(board);
@@ -382,6 +381,7 @@ public class Main {
 
             }
         }
+        if (board.getBoardValue() > maxValue) { return false; }
 
         if (!board.hashCurrentBoardState(maxValue)) { return false; }
         if (board.getPathWithForwards() != null) {
@@ -389,16 +389,16 @@ public class Main {
             return true;
         }
         // First try and push a box from where we stand
-        if (!board.isFirstStep()) {
-            for (int dir = 0; dir < 4; dir++) {
-                if (board.isBoxInDirection(BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
-                    int boxPos = board.getPosFromPlayerInDirection(BoardState.getOppositeDirection(dir));
-                    board.performBoxMove(dir | boxPos << 2);
-                    if (dfsBackwards(board, depth + 1, maxValue, aggressive, maxTime)) { return true; }
-                    board.reverseMove();
-                }
-            }
-        }
+//        if (!board.isFirstStep()) {
+//            for (int dir = 0; dir < 4; dir++) {
+//                if (board.isBoxInDirection(BoardState.getOppositeDirection(dir)) && board.isGoodMove(dir)) {
+//                    int boxPos = board.getPosFromPlayerInDirection(BoardState.getOppositeDirection(dir));
+//                    board.performBoxMove(dir | boxPos << 2);
+//                    if (dfsBackwards(board, depth + 1, maxValue, aggressive, maxTime)) { return true; }
+//                    board.reverseMove();
+//                }
+//            }
+//        }
 
         // Now try moving first and then push
         for (int boxMove : possibleBoxMoves) {
