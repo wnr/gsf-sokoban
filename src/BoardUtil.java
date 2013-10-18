@@ -4,7 +4,39 @@ import java.io.*;
 public class BoardUtil {
     public static final String BOARD_FILE_NAME = "test.data";
 
+    public static Random generator = new Random();
+
     private static ArrayList<ArrayList<String>> cachedBoards;
+
+    public static int[] shuffleListToArray(List<Integer> list, int shuffle) {
+        int[] array = new int[list.size()];
+        int i = 0;
+        
+        for (int element : list) {
+            array[i++] = element;
+        }
+
+        if(array.length < 2) {
+            return array;
+        }
+
+        while(shuffle > 0) {
+            shuffle--;
+
+            int i1 = generator.nextInt(array.length);
+            int i2 = i1;
+
+            while((i2 = generator.nextInt(array.length)) == i1);
+
+            int v1 = array[i1];
+            int v2 = array[i2];
+
+            array[i2] = v1;
+            array[i1] = v2;
+        }
+
+        return array;
+    }
 
     public static ArrayList<ArrayList<String>> getTestBoards() throws IOException {
         if (cachedBoards == null) {

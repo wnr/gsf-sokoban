@@ -240,14 +240,7 @@ public class BoardStateBackwards {
             }
         }
 
-        Collections.shuffle(boxMoves);
-
-        //TODO: Test ignore convert to array and just go with arraylist
-        possibleBoxJumpMoves = new int[boxMoves.size()];
-        int i = 0;
-        for (int move : boxMoves) {
-            possibleBoxJumpMoves[i++] = move;
-        }
+        possibleBoxJumpMoves = BoardUtil.shuffleListToArray(boxMoves, Main.NUM_SHUFFLING);
     }
 
     private void locateBoxes() {

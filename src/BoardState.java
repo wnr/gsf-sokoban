@@ -234,6 +234,10 @@ public class BoardState {
             addMovesForBox(boxPos, boardSections, moves);
         }
 
+        possibleBoxMoves = BoardUtil.shuffleListToArray(moves, Main.NUM_SHUFFLING);
+    }
+
+    private void shuffleBoxMoves(List<Integer> moves) {
         Collections.shuffle(moves);
 
         possibleBoxMoves = new int[moves.size()];

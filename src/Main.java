@@ -10,6 +10,7 @@ public class Main {
 
     public static final long MAX_RUNNING_TIME_DFS = 1000;
     public static final int MAX_VALUE_INCREASER = 2;
+    public static final int NUM_SHUFFLING = 5;
 
     public static boolean debug              = false;
     public static boolean printPath          = false;
