@@ -201,7 +201,7 @@ public class Main {
         long totalTimeForwards = 0;
         long relativeTimeForwards = 0;
         long relativeTimeBackwards = 0;
-        long maximumRunningTimeDFS = 5500;
+        long maximumRunningTimeDFS = 200000;
 
         int nextToGo = BI_DIR;
         while (true) {
@@ -241,6 +241,7 @@ public class Main {
 
                 for(int possibleStartingPosIndex = 0; !done && possibleStartingPosIndex < boardBackwards.getPossibleStartingPos().size(); possibleStartingPosIndex++){
                     boardBackwards.updateInitialStartingPos(possibleStartingPosIndex);
+                     boardBackwards.analyzeBoard(false);
                     int initialBoardValue = boardBackwards.getBoardValue();
 //                    System.out.println("Value for "+ possibleStartingPosIndex + " " + initialBoardValue);
                     int maxValue = maxBackwardsDepthValueIncreaser + initialBoardValue;
@@ -266,7 +267,7 @@ public class Main {
             }
 
             if (relativeTimeForwards < relativeTimeBackwards || sameNumStatesCnt >= 5) {
-                nextToGo = FORWARD;
+                nextToGo = BACKWARD;
             } else {
                 nextToGo = BACKWARD;
             }

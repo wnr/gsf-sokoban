@@ -331,6 +331,7 @@ public class BoardStateBackwards {
             computeReachableSideIndexBFS(pos);
         }
 
+
         for (int i = 0; i < goalCells.length; i++) {
             int goalPos = goalCells[i];
 
@@ -404,6 +405,11 @@ public class BoardStateBackwards {
                 possibleMatchedGoal.add(matchedGoal);
                 possibleMatchedBox.add(matchedBox);
                 possibleCurrentReachableBoxDir.add(tempPossibleCurrentReachableBoxDir.get(i));
+//                    System.out.println(Arrays.toString(goalsInPrioOrder));
+//                    System.out.println(Arrays.toString(prioForGoal));
+//                    System.out.println(Arrays.toString(matchedGoal));
+//                    System.out.println(Arrays.toString(matchedBox));
+//                    System.out.println(Arrays.toString(currentReachableBoxDir));
                 }
             }
             catch (ArrayIndexOutOfBoundsException e) {
@@ -1136,6 +1142,14 @@ public class BoardStateBackwards {
         matchedGoal = possibleMatchedGoal.get(startingPosIndex);
         matchedBox = possibleMatchedBox.get(startingPosIndex);
         currentReachableBoxDir = possibleCurrentReachableBoxDir.get(startingPosIndex);
+//        System.out.println();
+//        System.out.println(possibleStartingPos.get(startingPosIndex));
+//        System.out.println(Arrays.toString(possibleGoalsInPrioOrder.get(startingPosIndex)));
+//        System.out.println(Arrays.toString(possiblePrioForGoal.get(startingPosIndex)));
+//        System.out.println(Arrays.toString(possibleMatchedGoal.get(startingPosIndex)));
+//        System.out.println(Arrays.toString(possibleMatchedBox.get(startingPosIndex)));
+//        System.out.println(Arrays.toString(possibleCurrentReachableBoxDir.get(startingPosIndex)));
+
     }
 
     static class StackEntry {
