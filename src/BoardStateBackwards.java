@@ -1,10 +1,4 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.PriorityQueue;
+import java.util.*;
 
 public class BoardStateBackwards {
 
@@ -245,6 +239,8 @@ public class BoardStateBackwards {
                 }
             }
         }
+
+        Collections.shuffle(boxMoves);
 
         //TODO: Test ignore convert to array and just go with arraylist
         possibleBoxJumpMoves = new int[boxMoves.size()];
