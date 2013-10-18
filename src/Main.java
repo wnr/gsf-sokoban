@@ -119,7 +119,7 @@ public class Main {
             boardBackward.setBoardStateForwards(boardForward);
             boardForward.setBoardStateBackwards(boardBackward);
             if (debug) {System.out.println("Using Forward AND Backwards algorithms");}
-//            path = aggressiveSearch(boardForward);
+            path = aggressiveSearch(boardForward);
             if (path == null) {
                 if (debug) { System.out.println("Aggressive search failed, trying idA*"); }
                 boardForward.clearCache();
@@ -127,6 +127,10 @@ public class Main {
                 boardForward.initializeBoxToGoalMapping();
 
                 path = idAStarBi(boardForward, boardBackward);
+                if (debug) {
+                    System.out.println("Tried pathFromHash " + boardForward.pathFromHashCnt + "(" + boardForward.pathFromHashSuccessCnt + ") times");
+                    System.out.println("Tried pathFromHash " + boardBackward.pathFromHashCnt + "(" + boardBackward.pathFromHashSuccessCnt + ") times");
+                }
             } else {
                 if (debug) { System.out.println("Aggressive search succeeded!"); }
             }
@@ -201,9 +205,9 @@ public class Main {
         long totalTimeForwards = 0;
         long relativeTimeForwards = 0;
         long relativeTimeBackwards = 0;
-        long maximumRunningTimeDFS = 2000000;
+        long maximumRunningTimeDFS = 5500;
 
-        int nextToGo = BACKWARD;
+        int nextToGo = BI_DIR;
         while(true){
             if ((nextToGo & FORWARD) == FORWARD) {
 
@@ -267,7 +271,7 @@ public class Main {
             }
 
             if (relativeTimeForwards < relativeTimeBackwards || sameNumStatesCnt >= 5) {
-                nextToGo = BACKWARD;
+                nextToGo = FORWARD;
             } else {
                 nextToGo = BACKWARD;
             }
@@ -434,10 +438,10 @@ public class Main {
                 default:
                     throw new RuntimeException("Invalid move: " + ch);
             }
-//            if (displaySteps && !success) {
-//                System.out.println(pathTaken);
-//                return false;
-//            }
+            if (displaySteps && !success) {
+                System.out.println(pathTaken);
+                return false;
+            }
             pathTaken += "" + ch;
             if (displaySteps) {
                 System.out.println(board);

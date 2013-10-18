@@ -107,6 +107,9 @@ public class BoardStateBackwards {
     private ArrayList<int[]> possibleMatchedBox;
     private ArrayList<int[]>     possibleCurrentReachableBoxDir;
 
+    public int pathFromHashCnt = 0;
+    public int pathFromHashSuccessCnt = 0;
+
     public BoardStateBackwards(List<String> lines) {
         height = lines.size();
         width = 0;
@@ -801,7 +804,7 @@ public class BoardStateBackwards {
     }
 
     public boolean reverseMove(int[] board, int prevMoveVal) {
-        int prevBoxPos = prevMoveVal >>> 2;
+        int prevBoxPos = boxPosLastMove(prevMoveVal);
         int dir = prevMoveVal & 3;
         int currentBoxPos = prevBoxPos + dx[dir];
         int currentPlayerPos = currentBoxPos + dx[dir];
@@ -1025,6 +1028,7 @@ public class BoardStateBackwards {
                     return true;
                 }
             }
+            pathFromHashCnt++;
             for (long prime : BoardState.HASH_PRIMES) {
                 if (pathWithForwards == null) {
                     //We found our way home! Probably...
@@ -1043,8 +1047,8 @@ public class BoardStateBackwards {
                     int forwardPlayerPos = forwardBoxPos;
 
                     StringBuilder tmpSB = new StringBuilder();
-                    backtrackPathBFS(board, forwardPlayerPos, playerPos, tmpSB);
-                    String connectionPath = tmpSB.reverse().toString();
+                    backtrackPathBFS(board, playerPos, forwardPlayerPos, tmpSB);
+                    String connectionPath = tmpSB.toString();
 
                     int[] boardCopy2 = new int[board.length];
                     for (int i = 0; i < board.length; i++) {
@@ -1055,6 +1059,8 @@ public class BoardStateBackwards {
                     pathWithForwards = forwardPath + connectionPath + backwardPath;
                     if (!Main.investigatePath(pathWithForwards)) {
                         pathWithForwards = null;
+                    } else {
+                        pathFromHashSuccessCnt++;
                     }
                 }
             }

@@ -97,6 +97,8 @@ public class BoardState {
 
     int mostUpLeftPos;
 
+    public int pathFromHashCnt = 0;
+    public int pathFromHashSuccessCnt = 0;
 
     public BoardState(List<String> lines) {
         height = lines.size();
@@ -1175,6 +1177,7 @@ public class BoardState {
                     return true;
                 }
             }
+            pathFromHashCnt++;
             for (long prime : HASH_PRIMES) {
                 if (pathWithBackwards == null) {
                     //We found our way home! Probably...
@@ -1210,10 +1213,7 @@ public class BoardState {
                     if (!Main.investigatePath(pathWithBackwards)) {
                         pathWithBackwards = null;
                     } else {
-//                        System.out.println("Success from FORWARD");
-//                        System.out.println(forwardPath);
-//                        System.out.println(connectionPath);
-//                        System.out.println(backwardsPath);
+                        pathFromHashSuccessCnt++;
                     }
                 }
             }
