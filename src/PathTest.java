@@ -27,7 +27,7 @@ public class PathTest {
             System.exit(0);
         }
 
-        board = BoardLightUtil.getTestBoard(boardNum);
+        board = BoardUtil.getTestBoardLight(boardNum);
 
         if (board == null) {
             System.out.println("Invalid board number: " + boardNum);

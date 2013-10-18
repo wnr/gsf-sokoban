@@ -64,9 +64,9 @@ public class Main {
             }
             if (debug) { System.out.println("Searching for board " + boardNum + "..."); }
 
-            testBoard = BoardLightUtil.getTestBoard(boardNum);
+            testBoard = BoardUtil.getTestBoardLight(boardNum);
             if (forwardOrBackwards != BACKWARD) {boardForward = BoardUtil.getTestBoard(boardNum); }
-            if (forwardOrBackwards != FORWARD) {boardBackward = BoardUtilBackwards.getTestBoard(boardNum);}
+            if (forwardOrBackwards != FORWARD) {boardBackward = BoardUtil.getTestBoardBackwards(boardNum);}
 
             if (boardForward == null && boardBackward == null) {
                 System.out.println("Invalid board number: " + boardNum);

@@ -41,7 +41,7 @@ public class Play {
                 System.exit(0);
             }
             System.out.println("Searching for board " + boardNum + "...");
-            board = BoardLightUtil.getTestBoard(boardNum);
+            board = BoardUtil.getTestBoardLight(boardNum);
             if (board == null) {
                 System.out.println("Invalid board number: " + boardNum);
                 System.exit(0);
