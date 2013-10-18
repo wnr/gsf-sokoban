@@ -8,7 +8,7 @@ public class Main {
     public static final int BACKWARD = 2;
     public static final int BI_DIR   = 3;
 
-    public static final long MAX_RUNNING_TIME_DFS = 1000;
+    public static final long MAX_RUNNING_TIME_DFS = 500;
     public static final int MAX_VALUE_INCREASER = 2;
 
     public static boolean debug              = false;

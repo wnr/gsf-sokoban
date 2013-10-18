@@ -41,6 +41,8 @@ public class BoardState {
     private static final int DEAD_END   = 5;
     private static final int ROOM       = 8;
 
+    private int[] possibleMoves;
+
     private char[] boardCharacters = { FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR };
     private static HashMap<Character, Integer> characterMapping;
 
@@ -134,6 +136,8 @@ public class BoardState {
             row++;
         }
 
+        possibleMoves = new int[boxCnt*4];
+
         boolean[] visited = new boolean[totalSize];
         setOutsideSpaceDFS(playerPos, visited);
         for (int pos = 0; pos < totalSize; pos++) {
@@ -224,7 +228,9 @@ public class BoardState {
                 }
             }
         }
-        LinkedList<Integer> moves = new LinkedList<Integer>();
+
+        int boxMoves = 0;
+
         //        if (onlyPushBox == -1 && lastMovedBoxPos != -1) {
         //            addMovesForBox(lastMovedBoxPos, boardSections, moves);
         //        }
@@ -237,37 +243,32 @@ public class BoardState {
             if (aggressive && lastMovedBoxIndex != -1 && box != lastMovedBoxIndex && getGoalSideDistValue(boxCells[lastMovedBoxIndex], matchedGoal[lastMovedBoxIndex]) != 0) {
                 continue;
             }
-            addMovesForBox(boxPos, boardSections, moves);
-        }
 
-        possibleBoxMoves = new int[moves.size()];
-        int i = 0;
-        for (int move : moves) {
-            possibleBoxMoves[i++] = move;
-        }
-    }
-
-    private void addMovesForBox(int boxPos, int[] boardSections, LinkedList<Integer> moves) {
-        for (int dir = 0; dir < 2; dir++) {
-            int newPos = boxPos + dx[dir];
-            if (isFree(newPos)) {
-                int newPos2 = boxPos + dx[dir + 2];
-                if (isFree(newPos2)) {
-                    if (boardSections[newPos] == 1) {
-                        int move = (boxPos << 2) + dir + 2;
-                        if (isGoodMove(move)) {
-                            moves.add(move);
+            for (int dir = 0; dir < 2; dir++) {
+                int newPos = boxPos + dx[dir];
+                if (isFree(newPos)) {
+                    int newPos2 = boxPos + dx[dir + 2];
+                    if (isFree(newPos2)) {
+                        if (boardSections[newPos] == 1) {
+                            int move = (boxPos << 2) + dir + 2;
+                            if (isGoodMove(move)) {
+                                possibleMoves[boxMoves++] = move;
+                            }
                         }
-                    }
-                    if (boardSections[newPos2] == 1) {
-                        int move = (boxPos << 2) + dir;
-                        if (isGoodMove(move)) {
-                            moves.add(move);
+                        if (boardSections[newPos2] == 1) {
+                            int move = (boxPos << 2) + dir;
+                            if (isGoodMove(move)) {
+                                possibleMoves[boxMoves++] = move;
+                            }
                         }
                     }
                 }
             }
         }
+
+        possibleBoxMoves = new int[boxMoves];
+
+        System.arraycopy(possibleMoves, 0, possibleBoxMoves, 0, boxMoves);
     }
 
     public boolean isDeadLock() {

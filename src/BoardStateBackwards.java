@@ -39,6 +39,9 @@ public class BoardStateBackwards {
     private static final int DEAD_END   = 5;
     private static final int ROOM       = 8;
 
+    private int[] possibleMoves;
+
+
     private char[] boardCharacters = { FREE_SPACE_CHAR, WALL_CHAR, GOAL_CHAR, 0, PLAYER_CHAR, 0, PLAYER_ON_GOAL_CHAR, 0, BOX_CHAR, 0, BOX_ON_GOAL_CHAR };
     private static HashMap<Character, Integer> characterMapping;
 
@@ -144,6 +147,7 @@ public class BoardStateBackwards {
             row++;
         }
 
+        possibleMoves = new int[boxCnt*4];
 
         startingPlayerPos = playerPos;
         mostUpLeftPos = playerPos;
@@ -223,7 +227,9 @@ public class BoardStateBackwards {
                 }
             }
         }
-        LinkedList<Integer> boxMoves = new LinkedList<Integer>();
+
+        int boxMoves = 0;
+
         for (int i = 0; i < goalCnt; i++) {
             int goal = goalsInPrioOrder[i];
             int box = matchedBox[goal];
@@ -239,19 +245,16 @@ public class BoardStateBackwards {
                     int newPos2 = newPos + dx[dir];
                     if (isFree(newPos2)) {
                         if (1 == boardSections[newPos]) {
-                            boxMoves.add(dir | boxPos << 2);
+                            possibleMoves[boxMoves++] = (dir | boxPos << 2);
                         }
                     }
                 }
             }
         }
 
-        //TODO: Test ignore convert to array and just go with arraylist
-        possibleBoxJumpMoves = new int[boxMoves.size()];
-        int i = 0;
-        for (int move : boxMoves) {
-            possibleBoxJumpMoves[i++] = move;
-        }
+        possibleBoxJumpMoves = new int[boxMoves];
+
+        System.arraycopy(possibleMoves, 0, possibleBoxJumpMoves, 0, boxMoves);
     }
 
     private void locateBoxes() {
